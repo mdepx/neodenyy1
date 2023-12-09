@@ -100,6 +100,20 @@ main(void)
 	int err;
 	int i;
 
+	printf("MDEPX started\n");
+
+	pin_set(&gpio_sc, PORT_E, 0, 0);
+	while (1) {
+		pin_set(&gpio_sc, PORT_B, 3, 0);
+		pin_set(&gpio_sc, PORT_B, 4, 0);
+		pin_set(&gpio_sc, PORT_D, 4, 0);
+		mdx_usleep(200000);
+		pin_set(&gpio_sc, PORT_B, 3, 0);
+		pin_set(&gpio_sc, PORT_B, 4, 0);
+		pin_set(&gpio_sc, PORT_D, 4, 0);
+		mdx_usleep(200000);
+	}
+
 	pin_set(&gpio_sc, PORT_B, 13, 0);
 	mdx_usleep(1000000);
 
