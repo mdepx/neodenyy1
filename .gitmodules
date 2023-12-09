@@ -1,0 +1,3 @@
+[submodule "mdepx"]
+	path = mdepx
+	url = https://github.com/machdep/mdepx
