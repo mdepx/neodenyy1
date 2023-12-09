@@ -33,9 +33,13 @@
 #include <dev/display/dsi.h>
 #include <dev/otm8009a/otm8009a.h>
 
+#include <arm/stm/stm32f4.h>
+
 #include <libfont/libfont.h>
 
 #include "board.h"
+
+extern struct stm32f4_gpio_softc gpio_sc;
 
 static struct global_data {
 	uint32_t ptr;
@@ -95,6 +99,15 @@ main(void)
 	uint8_t text[64];
 	int err;
 	int i;
+
+	pin_set(&gpio_sc, PORT_B, 13, 0);
+	mdx_usleep(1000000);
+
+	printf("air\n");
+
+	pin_set(&gpio_sc, PORT_E, 2, 0);
+	mdx_usleep(100000);
+	pin_set(&gpio_sc, PORT_E, 2, 0);
 
 	while (1) {
 		printf("Hello world\n");

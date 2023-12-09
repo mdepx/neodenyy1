@@ -170,8 +170,6 @@ board_init(void)
 	reg |= (GPIOGEN | GPIOHEN | GPIOIEN);
 	reg |= (GPIOJEN | GPIOKEN);
 
-	reg = GPIOAEN;
-
 	stm32f4_flash_setup(&flash_sc);
 	stm32f4_rcc_setup(&rcc_sc, reg, 0, 0, (PWREN), (TIM1EN | USART1EN));
 
