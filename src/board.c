@@ -153,7 +153,7 @@ board_init(void)
 	stm32f4_rcc_init(&rcc_sc, RCC_BASE);
 	stm32f4_pwr_init(&pwr_sc, PWR_BASE);
 
-	pconf.pllm = 16; //8
+	pconf.pllm = 16;
 	pconf.plln = 336;
 	pconf.pllq = 7;
 	pconf.pllp = 0;
@@ -183,6 +183,8 @@ board_init(void)
 
 	stm32f4_usart_init(&usart_sc, USART1_BASE, 84000000, 115200);
 	mdx_console_register(uart_putchar, (void *)&usart_sc);
+
+	printf("Mdepx started\n");
 
 	/* (168/4) * 2 = 84MHz / 1 PSC = 84 */
 	stm32f4_timer_init(&timer_sc, TIM1_BASE, (84000000 * 2));

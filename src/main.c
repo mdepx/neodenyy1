@@ -31,124 +31,28 @@
 
 #include <dev/display/panel.h>
 #include <dev/display/dsi.h>
-#include <dev/otm8009a/otm8009a.h>
-
 #include <arm/stm/stm32f4.h>
-
-#include <libfont/libfont.h>
 
 #include "board.h"
 
 extern struct stm32f4_gpio_softc gpio_sc;
 
-static struct global_data {
-	uint32_t ptr;
-	struct font_info font;
-} g_data;
-
-static void
-draw_pixel(void *arg, int x, int y, int pixel)
-{
-	uint32_t *addr;
-
-	addr = (uint32_t *)(g_data.ptr + DISPLAY_WIDTH * y * 3 + x * 3);
-
-	if (pixel)
-		*addr = 0xffffff;
-	else
-		*addr = 0;
-}
-
-static void
-draw_text_utf8(uint8_t *s)
-{
-	struct char_info ci;
-	uint8_t *newptr;
-	uint8_t *buf;
-	int c;
-
-	g_data.ptr = FB_BASE;
-
-	buf = (uint8_t *)s;
-
-	for (;;) {
-		c = utf8_to_ucs2(buf, &newptr);
-		if (c == -1)
-			return;
-		buf = newptr;
-		get_char_info(&g_data.font, c, &ci);
-		draw_char(&g_data.font, c);
-		g_data.ptr += ci.xsize * 3;
-	}
-}
-
-static void
-display_clear(void)
-{
-	uint32_t p;
-	uint8_t *b;
-
-	b = (uint8_t *)FB_BASE;
-	for (p = 0; p < (DISPLAY_WIDTH * DISPLAY_HEIGHT * 3); p++)
-		*(b + p) = 0;
-}
-
 int
 main(void)
 {
-	uint8_t text[64];
-	int err;
 	int i;
 
 	printf("MDEPX started\n");
 
-	pin_set(&gpio_sc, PORT_E, 0, 0);
-	while (1) {
-		pin_set(&gpio_sc, PORT_B, 3, 0);
-		pin_set(&gpio_sc, PORT_B, 4, 0);
-		pin_set(&gpio_sc, PORT_D, 4, 0);
-		mdx_usleep(200000);
-		pin_set(&gpio_sc, PORT_B, 3, 0);
-		pin_set(&gpio_sc, PORT_B, 4, 0);
-		pin_set(&gpio_sc, PORT_D, 4, 0);
-		mdx_usleep(200000);
-	}
-
-	pin_set(&gpio_sc, PORT_B, 13, 0);
-	mdx_usleep(1000000);
-
-	printf("air\n");
-
-	pin_set(&gpio_sc, PORT_E, 2, 0);
-	mdx_usleep(100000);
-	pin_set(&gpio_sc, PORT_E, 2, 0);
-
-	while (1) {
-		printf("Hello world\n");
+	printf("Sleeping 1 sec\n");
+	for (i = 0; i < 10; i++) {
 		mdx_usleep(100000);
-	}
-
-	g_data.font.draw_pixel = draw_pixel;
-
-	display_clear();
-
-	err = font_init(&g_data.font, (uint8_t *)FONT_ADDR);
-	if (err != 0) {
-		while (1) {
-			printf("Error: font not found\n");
-			usleep(1000000);
-		}
-	}
-
-	i = 0;
-
-	while (1) {
 		printf(".");
-		sprintf(text, "Hello World %d", i);
-		draw_text_utf8(text);
-		i += 1;
-		usleep(1000000);
 	}
+	printf("Sleeping 1 sec done\n");
+
+	while (1)
+		mdx_usleep(100000);
 
 	return (0);
 }

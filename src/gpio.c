@@ -38,18 +38,25 @@ static const struct gpio_pin uart_pins[] = {
 	{ PORT_E, 2, MODE_OUT, 0, FLOAT }, /* Air 1 */
 	{ PORT_E, 1, MODE_OUT, 0, FLOAT }, /* Air 2 */
 	{ PORT_E, 0, MODE_OUT, 0, FLOAT }, /* N */
-	{ PORT_B, 5, MODE_OUT, 0, FLOAT }, /* NS */
-	{ PORT_B, 4, MODE_OUT, 0, FLOAT }, /* SZ */
-	{ PORT_B, 3, MODE_OUT, 0, FLOAT }, /* S1 */
-	{ PORT_D, 4, MODE_OUT, 0, FLOAT }, /* S2 */
+
+	/* Needle Set ? */
+	{ PORT_B, 5, MODE_INP, 0, FLOAT }, /* NS */
+	/* At least one head is at Z ? */
+	{ PORT_B, 4, MODE_INP, 0, FLOAT }, /* SZ */
+	/* Head 1 has component? */
+	{ PORT_B, 3, MODE_INP, 0, FLOAT }, /* S1 */
+	/* Head 2 has component? */
+	{ PORT_D, 4, MODE_INP, 0, FLOAT }, /* S2 */
 
 	{ PORT_A,  3, MODE_OUT, 0, FLOAT }, /* Vibrator */
 	{ PORT_B, 11, MODE_OUT, 0, FLOAT }, /* PeelR */
 	{ PORT_B, 12, MODE_OUT, 0, FLOAT }, /* PeelL */
 	{ PORT_B, 13, MODE_OUT, 0, FLOAT }, /* Pump */
+
+	/* Sensors are logic 1 (home) or 0. */
 	{ PORT_C,  1, MODE_INP, 0, FLOAT }, /* SensorR */
-	{ PORT_E, 10, MODE_INP, 0, FLOAT }, /* SensorL 1 */
-	{ PORT_E, 11, MODE_INP, 0, FLOAT }, /* SensorL 2 */
+	{ PORT_C,  6, MODE_INP, 0, FLOAT }, /* SensorL head */
+	{ PORT_C,  7, MODE_INP, 0, FLOAT }, /* SensorL */
 	{ -1, -1, -1, -1, -1 },
 };
 
@@ -127,7 +134,6 @@ static const struct gpio_pin dsi_pins[] = {
 	{ PORT_J, 2, MODE_ALT, 13, FLOAT }, /* DSI_TE */
 	{ -1, -1, -1, -1, -1 },
 };
-
 
 void
 gpio_config(struct stm32f4_gpio_softc *sc)
