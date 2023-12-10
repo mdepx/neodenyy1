@@ -51,6 +51,22 @@ main(void)
 	}
 	printf("Sleeping 1 sec done\n");
 
+	pin_set(&gpio_sc, PORT_E, 6, 0); /* X ST */
+	pin_set(&gpio_sc, PORT_E, 5, 0); /* X FR */
+	pin_set(&gpio_sc, PORT_B, 8, 0); /* X STP */
+
+	while (1)
+		mdx_usleep(100000);
+
+	for (i = 0; i < 10000; i++) {
+		udelay(1);
+		pin_set(&gpio_sc, PORT_B, 8, 1); /* X STP */
+		udelay(1);
+		pin_set(&gpio_sc, PORT_B, 8, 0); /* X STP */
+	}
+
+	//{ PORT_B,  8, MODE_ALT, 3, FLOAT }, /* STP TIM10_CH1 */
+
 	while (1)
 		mdx_usleep(100000);
 
