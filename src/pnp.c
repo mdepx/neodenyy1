@@ -39,6 +39,7 @@
 
 extern struct stm32f4_gpio_softc gpio_sc;
 extern struct stm32f4_pwm_softc pwm_x_sc;
+extern struct stm32f4_pwm_softc pwm_y_sc;
 
 #define	PNP_MAX_X_NM	368000000	/* nanometers */
 #define	PNP_MAX_Y_NM	368000000	/* nanometers */
@@ -100,10 +101,30 @@ pnp_xenable(void)
 }
 
 static void
+pnp_yenable(void)
+{
+
+	pin_set(&gpio_sc, PORT_C, 0, 1); /* Y R ST */
+	pin_set(&gpio_sc, PORT_A, 8, 1); /* Y L ST */
+	mdx_usleep(10000);
+}
+
+static void
 pnp_xset_direction(int dir)
 {
 
 	pin_set(&gpio_sc, PORT_E, 5, dir); /* X FR */
+}
+
+static void
+pnp_yset_direction(int dir)
+{
+	int rdir;
+
+	rdir = dir ? 0 : 1;
+
+	pin_set(&gpio_sc, PORT_C, 13, rdir); /* Y R FR */
+	pin_set(&gpio_sc, PORT_C, 9, dir); /* Y L FR */
 }
 
 static void
@@ -114,6 +135,18 @@ xstep(int speed)
 	freq = speed * 50000;
 
 	stm32f4_pwm_step(&pwm_x_sc, (1 << 0), freq);
+}
+
+static void
+ystep(int speed)
+{
+	uint32_t freq;
+	int chanset;
+
+	freq = speed * 50000;
+	chanset = (1 << 0) | (1 << 1);
+
+	stm32f4_pwm_step(&pwm_y_sc, chanset, freq);
 }
 
 static int
@@ -245,6 +278,25 @@ pnp_test(void)
 	pin_set(&gpio_sc, PORT_D, 13, 1); /* Vref */
 	pin_set(&gpio_sc, PORT_D, 15, 1); /* Vref */
 	pin_set(&gpio_sc, PORT_C,  6, 1); /* Vref */
+
+#if 1
+	int i;
+
+	pnp_yenable();
+	pnp_yset_direction(1);
+
+	mdx_sem_init(&ysem, 0);
+
+	for (i = 0; i < 10000; i++) {
+		ystep(100);
+		mdx_sem_wait(&ysem);
+	}
+
+	printf("y compl\n");
+
+	while (1)
+		mdx_usleep(100000);
+#endif
 
 	pnp_xenable();
 
