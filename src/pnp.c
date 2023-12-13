@@ -113,7 +113,7 @@ xstep(int speed)
 
 	freq = speed * 50000;
 
-	stm32f4_pwm_step(&pwm_x_sc, 1 /* channel */, freq);
+	stm32f4_pwm_step(&pwm_x_sc, (1 << 0), freq);
 }
 
 static int
