@@ -60,14 +60,6 @@ main(void)
 
 	stm32f4_pwm_init(&pwm_x_sc, TIM10_BASE, 0);
 
-#if 0
-	/* Z Motor */
-	pin_set(&gpio_sc, PORT_E, 3, 0); /* X FR */
-	pin_set(&gpio_sc, PORT_E, 4, 0); /* X ST */
-	//stm32f4_pwm_init(&pwm_x_sc, TIM14_BASE, 0);
-	//stm32f4_pwm_init(&pwm_x_sc, TIM1_BASE, 0);
-#endif
-
 	while (1)
 		mdx_usleep(100000);
 
