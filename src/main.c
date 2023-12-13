@@ -56,15 +56,6 @@ main(void)
 	}
 	printf("Sleeping 2 sec done\n");
 
-#if 0
-	/* X Motor */
-	pin_set(&gpio_sc, PORT_E, 5, 1); /* X FR */
-	pin_set(&gpio_sc, PORT_E, 6, 1); /* X ST */
-	pin_set(&gpio_sc, PORT_D, 14, 1); /* X Vref */
-
-	stm32f4_pwm_init(&pwm_x_sc, TIM10_BASE, 0);
-#endif
-
 	pnp_xtest();
 
 	while (1)
