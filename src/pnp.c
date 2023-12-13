@@ -43,7 +43,8 @@ extern struct stm32f4_pwm_softc pwm_y_sc;
 
 #define	PNP_MAX_X_NM	368000000	/* nanometers */
 #define	PNP_MAX_Y_NM	368000000	/* nanometers */
-#define	PNP_STEP	6250		/* Length of a step, nanometers */
+#define	PNP_STEP_NM	6250		/* Length of a step, nanometers */
+#define	PNP_STEPS_PER_MM	160
 
 struct pnp_state {
 	uint32_t pos_x;
@@ -84,11 +85,20 @@ pnp_is_x_home(void)
 }
 
 static int
-pnp_is_y_home(void)
+pnp_is_yl_home(void)
 {
 
 	return (pin_get(&gpio_sc, PORT_C, 7));
 }
+
+#if 0
+static int
+pnp_is_yr_home(void)
+{
+
+	return (pin_get(&gpio_sc, PORT_C, 1));
+}
+#endif
 
 static void
 pnp_xenable(void)
@@ -104,6 +114,8 @@ static void
 pnp_yenable(void)
 {
 
+	pin_set(&gpio_sc, PORT_D, 13, 1); /* Vref */
+	mdx_usleep(10000);
 	pin_set(&gpio_sc, PORT_C, 0, 1); /* Y R ST */
 	pin_set(&gpio_sc, PORT_A, 8, 1); /* Y L ST */
 	mdx_usleep(10000);
@@ -137,14 +149,17 @@ xstep(int speed)
 	stm32f4_pwm_step(&pwm_x_sc, (1 << 0), freq);
 }
 
+#define	YLEFT	(1 << 0)
+#define	YRIGHT	(1 << 1)
+#define	YBOTH	(YLEFT | YRIGHT)
+
 static void
-ystep(int speed)
+ystep(int chanset, int speed)
 {
 	uint32_t freq;
-	int chanset;
 
 	freq = speed * 50000;
-	chanset = (1 << 0) | (1 << 1);
+	//chanset = (1 << 0) | (1 << 1);
 
 	stm32f4_pwm_step(&pwm_y_sc, chanset, freq);
 }
@@ -160,17 +175,17 @@ pnp_xhome(void)
 	error = 0;
 
 	while (1) {
-		if (!pnp_is_y_home()) {
+		if (!pnp_is_yl_home()) {
 			error = 1;
 			break;
 		}
 		if (pnp_is_x_home())
 			break;
-		xstep(3);
+		xstep(75);
 		mdx_sem_wait(&xsem);
 	}
 
-	if (pnp_is_y_home() && pnp_is_x_home())
+	if (pnp_is_yl_home() && pnp_is_x_home())
 		printf("We are home\n");
 	else
 		printf("We are not at home\n");
@@ -181,9 +196,59 @@ pnp_xhome(void)
 static int
 pnp_yhome(void)
 {
+	int count;
+	int i;
 
-	if (!pnp_is_y_home())
-		return (1);
+	mdx_sem_init(&ysem, 0);
+
+	if (pnp_is_yl_home()) {
+		/* Already at home, move back a bit. */
+		pnp_yset_direction(1);
+		for (i = 0; i < (PNP_STEPS_PER_MM * 10); i++) {
+			ystep(YBOTH, 75);
+			mdx_sem_wait(&ysem);
+		}
+	}
+
+	if (pnp_is_yl_home())
+		panic("still at home");
+
+	/* Now try to reach home. */
+	pnp_yset_direction(0);
+
+	count = -1;
+
+	while (1) {
+#if 0
+		if (pnp_is_yl_home() && pnp_is_yr_home())
+			break;
+		else if (!pnp_is_yl_home() && pnp_is_yr_home())
+			ystep(YLEFT, 30);
+		else if (pnp_is_yl_home() && !pnp_is_yr_home())
+			ystep(YRIGHT, 30);
+		else if (!pnp_is_yl_home() && !pnp_is_yr_home())
+			ystep(YBOTH, 60);
+#endif
+
+		if (pnp_is_yl_home() && count == -1) {
+			/*
+			 * We have reached home for the first time.
+			 * But we need to move a mm or so into home.
+			 */
+			count = PNP_STEPS_PER_MM;
+		}
+
+		if (count > 0)
+			count--;
+
+		if (count == 0)
+			break;
+
+		ystep(YBOTH, 75);
+		mdx_sem_wait(&ysem);
+	}
+
+	printf("y compl\n");
 
 	return (0);
 }
@@ -235,7 +300,7 @@ pnp_move(int abs_x_mm, int abs_y_mm)
 		delta = pnp.pos_x - new_pos_x;
 	}
 
-	steps = delta / PNP_STEP;
+	steps = delta / PNP_STEP_NM;
 	pnp_xset_direction(dir);
 
 printf("Steps to move %d\n", steps);
@@ -256,11 +321,11 @@ printf("Steps to move %d\n", steps);
 		mdx_sem_wait(&xsem);
 
 		if (dir == 1)
-			pnp.pos_x += PNP_STEP;
+			pnp.pos_x += PNP_STEP_NM;
 		else {
 			if (pnp_is_x_home())
 				break;
-			pnp.pos_x -= PNP_STEP;
+			pnp.pos_x -= PNP_STEP_NM;
 		}
 	}
 
@@ -275,14 +340,15 @@ pnp_test(void)
 	pnp.pos_x = -1;
 	pnp.pos_y = -1;
 
-	pin_set(&gpio_sc, PORT_D, 13, 1); /* Vref */
+#if 1
+	/* TODO */
 	pin_set(&gpio_sc, PORT_D, 15, 1); /* Vref */
 	pin_set(&gpio_sc, PORT_C,  6, 1); /* Vref */
+#endif
 
-#if 1
+#if 0
 	int i;
 
-	pnp_yenable();
 	pnp_yset_direction(1);
 
 	mdx_sem_init(&ysem, 0);
@@ -298,6 +364,7 @@ pnp_test(void)
 		mdx_usleep(100000);
 #endif
 
+	pnp_yenable();
 	pnp_xenable();
 
 	error = pnp_home();
