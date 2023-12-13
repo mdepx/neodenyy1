@@ -197,7 +197,10 @@ static int
 pnp_yhome(void)
 {
 	int count;
+	int speed;
 	int i;
+
+	speed = 75;
 
 	mdx_sem_init(&ysem, 0);
 
@@ -205,7 +208,7 @@ pnp_yhome(void)
 		/* Already at home, move back a bit. */
 		pnp_yset_direction(1);
 		for (i = 0; i < (PNP_STEPS_PER_MM * 10); i++) {
-			ystep(YBOTH, 75);
+			ystep(YBOTH, speed);
 			mdx_sem_wait(&ysem);
 		}
 	}
@@ -236,6 +239,7 @@ pnp_yhome(void)
 			 * But we need to move a mm or so into home.
 			 */
 			count = PNP_STEPS_PER_MM;
+			speed = 40;
 		}
 
 		if (count > 0)
@@ -244,7 +248,7 @@ pnp_yhome(void)
 		if (count == 0)
 			break;
 
-		ystep(YBOTH, 75);
+		ystep(YBOTH, speed);
 		mdx_sem_wait(&ysem);
 	}
 
@@ -275,61 +279,107 @@ pnp_home(void)
 static void
 pnp_move(int abs_x_mm, int abs_y_mm)
 {
-	uint32_t new_pos_x;
-	uint32_t steps;
-	uint32_t delta;
-	uint32_t left_steps, t;
-	int speed;
-	int dir;
-	int i;
+	uint32_t new_pos_x, new_pos_y;
+	uint32_t xsteps, ysteps;
+	uint32_t xdelta, ydelta;
+	uint32_t t;
+	int xcount, ycount;
+	int xspeed, yspeed;
+	int xdir, ydir;
+	int xstop, ystop;
 
 	new_pos_x = abs_x_mm * 1000000; /* nanometers */
+	new_pos_y = abs_y_mm * 1000000; /* nanometers */
+
+	xcount = ycount = 0;
+	xstop = ystop = 0;
+
 	if (new_pos_x > PNP_MAX_X_NM)
 		new_pos_x = PNP_MAX_X_NM;
 	if (new_pos_x < 0)
 		new_pos_x = 0;
 
+	if (new_pos_y > PNP_MAX_Y_NM)
+		new_pos_y = PNP_MAX_Y_NM;
+	if (new_pos_y < 0)
+		new_pos_y = 0;
+
 	if (new_pos_x == pnp.pos_x)
-		return;
+		xstop = 1;
+
+	if (new_pos_y == pnp.pos_y)
+		ystop = 1;
 
 	if (new_pos_x > pnp.pos_x) {
-		dir = 1;
-		delta = new_pos_x - pnp.pos_x;
+		xdir = 1;
+		xdelta = new_pos_x - pnp.pos_x;
 	} else {
-		dir = 0;
-		delta = pnp.pos_x - new_pos_x;
+		xdir = 0;
+		xdelta = pnp.pos_x - new_pos_x;
 	}
 
-	steps = delta / PNP_STEP_NM;
-	pnp_xset_direction(dir);
+	if (new_pos_y > pnp.pos_y) {
+		ydir = 1;
+		ydelta = new_pos_y - pnp.pos_y;
+	} else {
+		ydir = 0;
+		ydelta = pnp.pos_y - new_pos_y;
+	}
 
-printf("Steps to move %d\n", steps);
+	xsteps = xdelta / PNP_STEP_NM;
+	ysteps = ydelta / PNP_STEP_NM;
+	pnp_xset_direction(xdir);
+	pnp_yset_direction(ydir);
 
-	for (i = 0; i < steps; i++) {
-		left_steps = steps - i;
+	printf("Steps to move %d %d\n", xsteps, ysteps);
 
-		speed = 100;
+	while (1) {
+		xspeed = yspeed = 100;
 
-		t = i < left_steps ? i : left_steps;
+		t = xcount < (xsteps - xcount) ? xcount : (xsteps - xcount);
 		if (t < 100) {
 			/* Gradually increase/decrease speed */
 			t /= 100;
-			speed = t < 25 ? 25 : t;
+			xspeed = t < 25 ? 25 : t;
 		}
 
-		xstep(speed);
-		mdx_sem_wait(&xsem);
+		t = ycount < (ysteps - ycount) ? ycount : (ysteps - ycount);
+		if (t < 100) {
+			/* Gradually increase/decrease speed */
+			t /= 100;
+			yspeed = t < 25 ? 25 : t;
+		}
 
-		if (dir == 1)
-			pnp.pos_x += PNP_STEP_NM;
-		else {
-			if (pnp_is_x_home())
-				break;
-			pnp.pos_x -= PNP_STEP_NM;
+		if (xstop && ystop)
+			break;
+		if (xstop == 0)
+			xstep(xspeed);
+		if (ystop == 0)
+			ystep(YBOTH, yspeed);
+
+		if (xstop == 0) {
+			mdx_sem_wait(&xsem);
+			if (xcount++ == (xsteps - 1))
+				xstop = 1;
+			if (xdir == 1)
+				pnp.pos_x += PNP_STEP_NM;
+			else
+				pnp.pos_x -= PNP_STEP_NM;
+		}
+
+		if (ystop == 0) {
+			mdx_sem_wait(&ysem);
+			if (ycount++ == (ysteps - 1))
+				ystop = 1;
+			if (ydir == 1)
+				pnp.pos_y += PNP_STEP_NM;
+			else
+				pnp.pos_y -= PNP_STEP_NM;
 		}
 	}
 
-printf("new x pos %d\n", pnp.pos_x);
+	printf("new x y %d %d\n", pnp.pos_x, pnp.pos_y);
+	printf("count x y %d %d\n", xcount, ycount);
 }
 
 int
@@ -371,32 +421,34 @@ pnp_test(void)
 	if (error)
 		return (error);
 
-	pnp_move(100, 0);
+	pnp_move(100, 100);
 	mdx_usleep(20000);
 
-	pnp_move(50, 0);
+#if 1
+	pnp_move(50, 20);
 	mdx_usleep(20000);
 
-	pnp_move(150, 0);
+	pnp_move(150, 150);
 	mdx_usleep(20000);
 
-	pnp_move(100, 0);
-	mdx_usleep(20000);
-
-	pnp_move(0, 0);
-	mdx_usleep(20000);
-
-	pnp_move(360, 0);
-	mdx_usleep(20000);
-
-	pnp_move(220, 0);
-	mdx_usleep(20000);
-
-	pnp_move(300, 0);
+	pnp_move(100, 200);
 	mdx_usleep(20000);
 
 	pnp_move(0, 0);
 	mdx_usleep(20000);
+
+	pnp_move(360, 10);
+	mdx_usleep(20000);
+
+	pnp_move(220, 90);
+	mdx_usleep(20000);
+
+	pnp_move(300, 180);
+	mdx_usleep(20000);
+
+	pnp_move(0, 0);
+	mdx_usleep(20000);
+#endif
 
 	return (0);
 }
