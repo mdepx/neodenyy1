@@ -95,10 +95,13 @@ pnp_xset_direction(int dir)
 }
 
 static void
-xstep(void)
+xstep(int speed)
 {
+	uint32_t freq;
 
-	stm32f4_pwm_step(&pwm_x_sc, 1 /* channel */);
+	freq = speed * 50000;
+
+	stm32f4_pwm_step(&pwm_x_sc, 1 /* channel */, freq);
 }
 
 static int
@@ -118,7 +121,7 @@ pnp_xhome(void)
 		}
 		if (pnp_is_x_home())
 			break;
-		xstep();
+		xstep(3);
 		mdx_sem_wait(&sem);
 	}
 
@@ -165,6 +168,8 @@ pnp_move(int abs_x_mm, int abs_y_mm)
 	uint32_t new_pos_x;
 	uint32_t steps;
 	uint32_t delta;
+	uint32_t left_steps, t;
+	int speed;
 	int dir;
 	int i;
 
@@ -190,8 +195,23 @@ pnp_move(int abs_x_mm, int abs_y_mm)
 
 printf("Steps to move %d\n", steps);
 
+	speed = 100;
+
 	for (i = 0; i < steps; i++) {
-		xstep();
+		left_steps = steps - i;
+
+		speed = 100;
+
+		t = i < left_steps ? i : left_steps;
+		if (t < 100) {
+			/* Gradually increase/decrease speed */
+			t /= 100;
+			speed = t < 25 ? 25 : t;
+		}
+
+		xstep(speed);
+		mdx_sem_wait(&sem);
+
 		if (dir == 1)
 			pnp.pos_x += PNP_STEP;
 		else {
@@ -199,7 +219,6 @@ printf("Steps to move %d\n", steps);
 				break;
 			pnp.pos_x -= PNP_STEP;
 		}
-		mdx_sem_wait(&sem);
 	}
 
 printf("new x pos %d\n", pnp.pos_x);
@@ -213,6 +232,10 @@ pnp_test(void)
 	pnp.pos_x = -1;
 	pnp.pos_y = -1;
 
+	pin_set(&gpio_sc, PORT_D, 13, 1); /* Vref */
+	pin_set(&gpio_sc, PORT_D, 15, 1); /* Vref */
+	pin_set(&gpio_sc, PORT_C,  6, 1); /* Vref */
+
 	pnp_xenable();
 
 	error = pnp_home();
@@ -220,31 +243,31 @@ pnp_test(void)
 		return (error);
 
 	pnp_move(100, 0);
-	mdx_usleep(200000);
+	mdx_usleep(20000);
 
 	pnp_move(50, 0);
-	mdx_usleep(200000);
+	mdx_usleep(20000);
 
 	pnp_move(150, 0);
-	mdx_usleep(200000);
+	mdx_usleep(20000);
 
 	pnp_move(100, 0);
-	mdx_usleep(200000);
+	mdx_usleep(20000);
 
 	pnp_move(0, 0);
-	mdx_usleep(200000);
+	mdx_usleep(20000);
 
 	pnp_move(360, 0);
-	mdx_usleep(200000);
+	mdx_usleep(20000);
 
 	pnp_move(220, 0);
-	mdx_usleep(200000);
+	mdx_usleep(20000);
 
 	pnp_move(300, 0);
-	mdx_usleep(200000);
+	mdx_usleep(20000);
 
 	pnp_move(0, 0);
-	mdx_usleep(200000);
+	mdx_usleep(20000);
 
 	return (0);
 }

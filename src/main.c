@@ -51,8 +51,8 @@ main(void)
 
 	printf("Sleeping 2 sec\n");
 	for (i = 0; i < 2; i++) {
-		mdx_usleep(500000);
-		mdx_usleep(500000);
+		udelay(500000);
+		udelay(500000);
 		printf(".");
 	}
 	printf("Sleeping 2 sec done\n");

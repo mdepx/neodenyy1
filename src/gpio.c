@@ -77,6 +77,10 @@ static const struct gpio_pin neodenyy1_pins[] = {
 	{ PORT_B,  8, MODE_ALT, 3, PULLDOWN }, /* STP TIM10_CH1 */
 	{ PORT_D, 14, MODE_OUT, 0, PULLDOWN }, /* X Motor VREF */
 
+	{ PORT_D, 13, MODE_OUT, 0, PULLDOWN }, /* Motor VREF */
+	{ PORT_D, 15, MODE_OUT, 0, PULLDOWN }, /* Motor VREF */
+	{ PORT_C, 6, MODE_OUT, 0, PULLDOWN }, /* Motor VREF */
+
 	/* Z Motor */
 	{ PORT_E, 4, MODE_OUT, 0, PULLDOWN }, /* ST */
 	{ PORT_E, 3, MODE_OUT, 0, PULLDOWN }, /* FR */
