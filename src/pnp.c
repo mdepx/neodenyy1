@@ -50,7 +50,19 @@ struct pnp_state {
 };
 
 static struct pnp_state pnp;
-static mdx_sem_t sem;
+static mdx_sem_t xsem;
+static mdx_sem_t ysem;
+
+void
+pnp_pwm_y_intr(void *arg, int irq)
+{
+
+	/* Step completed. */
+
+	stm32f4_pwm_intr(arg, irq);
+
+	mdx_sem_post(&ysem);
+}
 
 void
 pnp_pwm_x_intr(void *arg, int irq)
@@ -60,7 +72,7 @@ pnp_pwm_x_intr(void *arg, int irq)
 
 	stm32f4_pwm_intr(arg, irq);
 
-	mdx_sem_post(&sem);
+	mdx_sem_post(&xsem);
 }
 
 static int
@@ -110,7 +122,7 @@ pnp_xhome(void)
 	int error;
 
 	pnp_xset_direction(0);
-	mdx_sem_init(&sem, 0);
+	mdx_sem_init(&xsem, 0);
 
 	error = 0;
 
@@ -122,7 +134,7 @@ pnp_xhome(void)
 		if (pnp_is_x_home())
 			break;
 		xstep(3);
-		mdx_sem_wait(&sem);
+		mdx_sem_wait(&xsem);
 	}
 
 	if (pnp_is_y_home() && pnp_is_x_home())
@@ -195,8 +207,6 @@ pnp_move(int abs_x_mm, int abs_y_mm)
 
 printf("Steps to move %d\n", steps);
 
-	speed = 100;
-
 	for (i = 0; i < steps; i++) {
 		left_steps = steps - i;
 
@@ -210,7 +220,7 @@ printf("Steps to move %d\n", steps);
 		}
 
 		xstep(speed);
-		mdx_sem_wait(&sem);
+		mdx_sem_wait(&xsem);
 
 		if (dir == 1)
 			pnp.pos_x += PNP_STEP;

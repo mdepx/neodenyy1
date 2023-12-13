@@ -52,6 +52,7 @@ struct arm_nvic_softc nvic_sc;
 struct mdx_device dev_nvic = { .sc = &nvic_sc };
 
 struct stm32f4_pwm_softc pwm_x_sc;
+struct stm32f4_pwm_softc pwm_y_sc;
 
 void
 udelay(uint32_t usec)
@@ -104,7 +105,7 @@ board_init(void)
 
 	stm32f4_flash_setup(&flash_sc);
 	reg = (GPIOAEN | GPIOBEN | GPIOCEN | GPIODEN | GPIOEEN);
-	stm32f4_rcc_setup(&rcc_sc, reg, 0, 0, (TIM14EN),
+	stm32f4_rcc_setup(&rcc_sc, reg, 0, 0, (TIM14EN | TIM4EN),
 	    (TIM1EN | TIM8EN | TIM10EN | USART1EN));
 	stm32f4_gpio_init(&gpio_sc, GPIO_BASE);
 	gpio_config(&gpio_sc);
@@ -126,4 +127,9 @@ board_init(void)
 	stm32f4_pwm_init(&pwm_x_sc, TIM10_BASE, 168000000);
 	mdx_intc_setup(&dev_nvic, 25, pnp_pwm_x_intr, &pwm_x_sc);
 	mdx_intc_enable(&dev_nvic, 25);
+
+	/* Y L/R Motors / TIM4 */
+	stm32f4_pwm_init(&pwm_y_sc, TIM4_BASE, 168000000);
+	mdx_intc_setup(&dev_nvic, 30, pnp_pwm_y_intr, &pwm_y_sc);
+	mdx_intc_enable(&dev_nvic, 30);
 }
