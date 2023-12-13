@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2020 Ruslan Bukin <br@bsdpad.com>
+ * Copyright (c) 2023 Ruslan Bukin <br@bsdpad.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,11 +26,5 @@
 
 #ifndef _SRC_BOARD_H_
 #define	_SRC_BOARD_H_
-
-#define	BOARD_OSC_FREQ		8000000	/* 8 MHz */
-#define	FONT_ADDR		0x081b0000
-#define	FB_BASE			0xC0000000
-#define	DISPLAY_WIDTH		480
-#define	DISPLAY_HEIGHT		800
 
 #endif /* !_SRC_BOARD_H_ */

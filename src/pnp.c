@@ -134,6 +134,9 @@ static int
 pnp_yhome(void)
 {
 
+	if (!pnp_is_y_home())
+		return (1);
+
 	return (0);
 }
 
@@ -217,28 +220,31 @@ pnp_test(void)
 		return (error);
 
 	pnp_move(100, 0);
-	mdx_usleep(100000);
+	mdx_usleep(200000);
 
 	pnp_move(50, 0);
-	mdx_usleep(100000);
+	mdx_usleep(200000);
 
 	pnp_move(150, 0);
-	mdx_usleep(100000);
+	mdx_usleep(200000);
 
 	pnp_move(100, 0);
-	mdx_usleep(100000);
+	mdx_usleep(200000);
 
 	pnp_move(0, 0);
-	mdx_usleep(100000);
+	mdx_usleep(200000);
 
 	pnp_move(360, 0);
-	mdx_usleep(100000);
+	mdx_usleep(200000);
 
 	pnp_move(220, 0);
-	mdx_usleep(100000);
+	mdx_usleep(200000);
 
 	pnp_move(300, 0);
-	mdx_usleep(100000);
+	mdx_usleep(200000);
+
+	pnp_move(0, 0);
+	mdx_usleep(200000);
 
 	return (0);
 }
