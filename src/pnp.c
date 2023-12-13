@@ -40,14 +40,17 @@
 extern struct stm32f4_gpio_softc gpio_sc;
 extern struct stm32f4_pwm_softc pwm_x_sc;
 
-mdx_sem_t sem;
+#define	PNP_MAX_X_NM	368000000	/* nanometers */
+#define	PNP_MAX_Y_NM	368000000	/* nanometers */
+#define	PNP_STEP	6250		/* Length of a step, nanometers */
 
 struct pnp_state {
-	int pos_x;
-	int pos_y;
+	uint32_t pos_x;
+	uint32_t pos_y;
 };
 
-struct pnp_state pnp;
+static struct pnp_state pnp;
+static mdx_sem_t sem;
 
 void
 pnp_pwm_x_intr(void *arg, int irq)
@@ -98,52 +101,144 @@ xstep(void)
 	stm32f4_pwm_step(&pwm_x_sc, 1 /* channel */);
 }
 
-static void
+static int
 pnp_xhome(void)
 {
+	int error;
 
-	pnp_xenable();
 	pnp_xset_direction(0);
 	mdx_sem_init(&sem, 0);
 
+	error = 0;
+
 	while (1) {
-		if (!pnp_is_y_home())
+		if (!pnp_is_y_home()) {
+			error = 1;
 			break;
+		}
 		if (pnp_is_x_home())
 			break;
 		xstep();
 		mdx_sem_wait(&sem);
 	}
+
+	if (pnp_is_y_home() && pnp_is_x_home())
+		printf("We are home\n");
+	else
+		printf("We are not at home\n");
+
+	return (error);
 }
 
-static void
+static int
 pnp_yhome(void)
 {
 
+	return (0);
 }
 
-static void
+static int
 pnp_home(void)
 {
+	int error;
 
-	pnp_yhome();
-	pnp_xhome();
+	error = pnp_yhome();
+	if (error)
+		return (error);
+
+	error = pnp_xhome();
+	if (error)
+		return (error);
 
 	pnp.pos_x = 0;
 	pnp.pos_y = 0;
+
+	return (0);
 }
 
 static void
-pnp_move(int pos_x, int pos_y)
+pnp_move(int abs_x_mm, int abs_y_mm)
 {
+	uint32_t new_pos_x;
+	uint32_t steps;
+	uint32_t delta;
+	int dir;
+	int i;
 
+	new_pos_x = abs_x_mm * 1000000; /* nanometers */
+	if (new_pos_x > PNP_MAX_X_NM)
+		new_pos_x = PNP_MAX_X_NM;
+	if (new_pos_x < 0)
+		new_pos_x = 0;
+
+	if (new_pos_x == pnp.pos_x)
+		return;
+
+	if (new_pos_x > pnp.pos_x) {
+		dir = 1;
+		delta = new_pos_x - pnp.pos_x;
+	} else {
+		dir = 0;
+		delta = pnp.pos_x - new_pos_x;
+	}
+
+	steps = delta / PNP_STEP;
+	pnp_xset_direction(dir);
+
+printf("Steps to move %d\n", steps);
+
+	for (i = 0; i < steps; i++) {
+		xstep();
+		if (dir == 1)
+			pnp.pos_x += PNP_STEP;
+		else {
+			if (pnp_is_x_home())
+				break;
+			pnp.pos_x -= PNP_STEP;
+		}
+		mdx_sem_wait(&sem);
+	}
+
+printf("new x pos %d\n", pnp.pos_x);
 }
 
-void
+int
 pnp_test(void)
 {
+	int error;
 
-	pnp_home();
+	pnp.pos_x = -1;
+	pnp.pos_y = -1;
 
-	pnp_move(10, 0);
+	pnp_xenable();
+
+	error = pnp_home();
+	if (error)
+		return (error);
+
+	pnp_move(100, 0);
+	mdx_usleep(100000);
+
+	pnp_move(50, 0);
+	mdx_usleep(100000);
+
+	pnp_move(150, 0);
+	mdx_usleep(100000);
+
+	pnp_move(100, 0);
+	mdx_usleep(100000);
+
+	pnp_move(0, 0);
+	mdx_usleep(100000);
+
+	pnp_move(360, 0);
+	mdx_usleep(100000);
+
+	pnp_move(220, 0);
+	mdx_usleep(100000);
+
+	pnp_move(300, 0);
+	mdx_usleep(100000);
+
+	return (0);
 }

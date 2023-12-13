@@ -42,6 +42,7 @@ extern struct stm32f4_pwm_softc pwm_x_sc;
 int
 main(void)
 {
+	int error;
 	int i;
 
 	printf("MDEPX started\n");
@@ -56,7 +57,8 @@ main(void)
 	}
 	printf("Sleeping 2 sec done\n");
 
-	pnp_test();
+	error = pnp_test();
+	printf("pnp_test returned %d\n", error);
 
 	while (1)
 		mdx_usleep(100000);
