@@ -34,6 +34,7 @@
 #include <arm/stm/stm32f4.h>
 
 #include "board.h"
+#include "pnp.h"
 
 extern struct stm32f4_gpio_softc gpio_sc;
 extern struct stm32f4_pwm_softc pwm_x_sc;
@@ -45,6 +46,8 @@ main(void)
 
 	printf("MDEPX started\n");
 
+	mdx_usleep(100);
+
 	printf("Sleeping 2 sec\n");
 	for (i = 0; i < 2; i++) {
 		mdx_usleep(500000);
@@ -53,12 +56,16 @@ main(void)
 	}
 	printf("Sleeping 2 sec done\n");
 
+#if 0
 	/* X Motor */
 	pin_set(&gpio_sc, PORT_E, 5, 1); /* X FR */
 	pin_set(&gpio_sc, PORT_E, 6, 1); /* X ST */
 	pin_set(&gpio_sc, PORT_D, 14, 1); /* X Vref */
 
 	stm32f4_pwm_init(&pwm_x_sc, TIM10_BASE, 0);
+#endif
+
+	pnp_xtest();
 
 	while (1)
 		mdx_usleep(100000);

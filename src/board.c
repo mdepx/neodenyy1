@@ -39,6 +39,7 @@
 
 #include "board.h"
 #include "gpio.h"
+#include "pnp.h"
 
 struct stm32f4_usart_softc usart_sc;
 struct stm32f4_gpio_softc gpio_sc;
@@ -117,15 +118,12 @@ board_init(void)
 	stm32f4_timer_init(&timer_sc, TIM8_BASE, 168000000);
 	arm_nvic_init(&dev_nvic, NVIC_BASE);
 
-	/* TIM 1 */
-	mdx_intc_setup(&dev_nvic, 27, stm32f4_pwm_intr, &pwm_x_sc);
-	mdx_intc_enable(&dev_nvic, 27);
-
-	/* TIM 8 */
+	/* Timer / TIM8 */
 	mdx_intc_setup(&dev_nvic, 46, stm32f4_timer_intr, &timer_sc);
 	mdx_intc_enable(&dev_nvic, 46);
 
-	/* TIM 10 */
-	mdx_intc_setup(&dev_nvic, 25, stm32f4_pwm_intr, &pwm_x_sc);
+	/* X Motor / TIM10 CH1 */
+	stm32f4_pwm_init(&pwm_x_sc, TIM10_BASE, 168000000);
+	mdx_intc_setup(&dev_nvic, 25, pnp_pwm_x_intr, &pwm_x_sc);
 	mdx_intc_enable(&dev_nvic, 25);
 }
