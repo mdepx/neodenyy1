@@ -31,8 +31,8 @@
 #include "gpio.h"
 
 static const struct gpio_pin neodenyy1_pins[] = {
-	{ PORT_A,  9, MODE_ALT, 7, FLOAT }, /* USART1_TX */
-	{ PORT_A, 10, MODE_ALT, 7, FLOAT }, /* USART1_RX */
+	{ PORT_A, 9, MODE_ALT, 7, PULLUP }, /* USART1_TX */
+	{ PORT_A, 10, MODE_ALT, 7, PULLUP }, /* USART1_RX */
 
 	/* Placement Head. */
 	{ PORT_E, 2, MODE_OUT, 0, FLOAT }, /* Air 1 */
@@ -51,46 +51,46 @@ static const struct gpio_pin neodenyy1_pins[] = {
 	/* Head 2 has component. */
 	{ PORT_D, 4, MODE_INP, 0, FLOAT }, /* S2 */
 
-	{ PORT_A,  3, MODE_OUT, 0, FLOAT }, /* Vibrator */
+	{ PORT_A, 3, MODE_OUT, 0, FLOAT }, /* Vibrator */
 	{ PORT_B, 11, MODE_OUT, 0, FLOAT }, /* PeelR */
 	{ PORT_B, 12, MODE_OUT, 0, FLOAT }, /* PeelL */
 	{ PORT_B, 13, MODE_OUT, 0, FLOAT }, /* Pump */
 
 	/* Sensors are logic 1 (home) or 0. */
-	{ PORT_C,  1, MODE_INP, 0, FLOAT }, /* SensorR */
-	{ PORT_C,  6, MODE_INP, 0, FLOAT }, /* SensorL head */
-	{ PORT_C,  7, MODE_INP, 0, FLOAT }, /* SensorL */
+	{ PORT_C, 1, MODE_INP, 0, PULLDOWN }, /* SensorR */
+	{ PORT_C, 6, MODE_INP, 0, PULLDOWN }, /* SensorL head */
+	{ PORT_C, 7, MODE_INP, 0, PULLDOWN }, /* SensorL */
 
 	/* TODO: Y Motor R */
-	{ PORT_C,  0, MODE_OUT, 0, FLOAT }, /* ST */
+	{ PORT_C, 0, MODE_OUT, 0, FLOAT }, /* ST */
 	{ PORT_C, 13, MODE_OUT, 0, FLOAT }, /* FR */
-	{ PORT_B,  7, MODE_ALT, 2, FLOAT }, /* STP TIM4_CH2 */
+	{ PORT_B, 7, MODE_ALT, 2, PULLDOWN }, /* STP TIM4_CH2 */
 
 	/* TODO: Y Motor L */
-	{ PORT_A,  8, MODE_OUT, 0, FLOAT }, /* ST */
-	{ PORT_C,  9, MODE_OUT, 0, FLOAT }, /* FR */
-	{ PORT_B,  6, MODE_ALT, 2, FLOAT }, /* STP TIM4_CH1 */
+	{ PORT_A, 8, MODE_OUT, 0, FLOAT }, /* ST */
+	{ PORT_C, 9, MODE_OUT, 0, FLOAT }, /* FR */
+	{ PORT_B, 6, MODE_ALT, 2, PULLDOWN }, /* STP TIM4_CH1 */
 
 	/* X Motor */
-	{ PORT_E,  6, MODE_OUT, 0, FLOAT }, /* ST */
-	{ PORT_E,  5, MODE_OUT, 0, FLOAT }, /* FR */
-	{ PORT_B,  8, MODE_OUT, 0, FLOAT }, /* STP TIM10_CH1 */
-	//{ PORT_B,  8, MODE_ALT, 3, FLOAT }, /* STP TIM10_CH1 */
+	{ PORT_E, 6, MODE_OUT, 0, PULLDOWN }, /* ST */
+	{ PORT_E, 5, MODE_OUT, 0, PULLDOWN }, /* FR */
+	{ PORT_B, 8, MODE_ALT, 3, PULLDOWN }, /* STP TIM10_CH1 */
+	{ PORT_D, 14, MODE_OUT, 0, PULLDOWN }, /* X Motor VREF */
 
 	/* Z Motor */
-	{ PORT_E,  4, MODE_OUT, 0, FLOAT }, /* ST */
-	{ PORT_E,  3, MODE_OUT, 0, FLOAT }, /* FR */
-	{ PORT_A,  7, MODE_ALT, 9, FLOAT }, /* STP TIM14_CH1 */
+	{ PORT_E, 4, MODE_OUT, 0, FLOAT }, /* ST */
+	{ PORT_E, 3, MODE_OUT, 0, FLOAT }, /* FR */
+	{ PORT_A, 7, MODE_ALT, 9, PULLDOWN }, /* STP TIM14_CH1 */
 
 	/* Head 1 */
-	{ PORT_D,  3, MODE_OUT, 0, FLOAT }, /* ST */
-	{ PORT_D,  1, MODE_OUT, 0, FLOAT }, /* FR */
-	{ PORT_A,  6, MODE_ALT, 9, FLOAT }, /* STP TIM13_CH1 */
+	{ PORT_D, 3, MODE_OUT, 0, FLOAT }, /* ST */
+	{ PORT_D, 1, MODE_OUT, 0, FLOAT }, /* FR */
+	{ PORT_A, 6, MODE_ALT, 9, PULLDOWN }, /* STP TIM13_CH1 */
 
 	/* Head 2 */
 	{ PORT_A, 15, MODE_OUT, 0, FLOAT }, /* ST */
-	{ PORT_D,  0, MODE_OUT, 0, FLOAT }, /* FR */
-	{ PORT_B, 14, MODE_ALT, 9, FLOAT }, /* STP TIM12_CH1 */
+	{ PORT_D, 0, MODE_OUT, 0, FLOAT }, /* FR */
+	{ PORT_B, 14, MODE_ALT, 9, PULLDOWN }, /* STP TIM12_CH1 */
 
 	{ -1, -1, -1, -1, -1 },
 };

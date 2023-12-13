@@ -36,6 +36,7 @@
 #include "board.h"
 
 extern struct stm32f4_gpio_softc gpio_sc;
+extern struct stm32f4_pwm_softc pwm_x_sc;
 
 int
 main(void)
@@ -44,28 +45,28 @@ main(void)
 
 	printf("MDEPX started\n");
 
-	printf("Sleeping 1 sec\n");
-	for (i = 0; i < 10; i++) {
-		mdx_usleep(100000);
+	printf("Sleeping 2 sec\n");
+	for (i = 0; i < 2; i++) {
+		mdx_usleep(500000);
+		mdx_usleep(500000);
 		printf(".");
 	}
-	printf("Sleeping 1 sec done\n");
+	printf("Sleeping 2 sec done\n");
 
-	pin_set(&gpio_sc, PORT_E, 6, 0); /* X ST */
-	pin_set(&gpio_sc, PORT_E, 5, 0); /* X FR */
-	pin_set(&gpio_sc, PORT_B, 8, 0); /* X STP */
+	/* X Motor */
+	pin_set(&gpio_sc, PORT_E, 5, 1); /* X FR */
+	pin_set(&gpio_sc, PORT_E, 6, 1); /* X ST */
+	pin_set(&gpio_sc, PORT_D, 14, 1); /* X Vref */
 
-	while (1)
-		mdx_usleep(100000);
+	stm32f4_pwm_init(&pwm_x_sc, TIM10_BASE, 0);
 
-	for (i = 0; i < 10000; i++) {
-		udelay(1);
-		pin_set(&gpio_sc, PORT_B, 8, 1); /* X STP */
-		udelay(1);
-		pin_set(&gpio_sc, PORT_B, 8, 0); /* X STP */
-	}
-
-	//{ PORT_B,  8, MODE_ALT, 3, FLOAT }, /* STP TIM10_CH1 */
+#if 0
+	/* Z Motor */
+	pin_set(&gpio_sc, PORT_E, 3, 0); /* X FR */
+	pin_set(&gpio_sc, PORT_E, 4, 0); /* X ST */
+	//stm32f4_pwm_init(&pwm_x_sc, TIM14_BASE, 0);
+	//stm32f4_pwm_init(&pwm_x_sc, TIM1_BASE, 0);
+#endif
 
 	while (1)
 		mdx_usleep(100000);

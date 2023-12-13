@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2018 Ruslan Bukin <br@bsdpad.com>
+ * Copyright (c) 2023 Ruslan Bukin <br@bsdpad.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,62 +32,25 @@
 
 #include <dev/display/panel.h>
 #include <dev/display/dsi.h>
-#include <dev/otm8009a/otm8009a.h>
 #include <dev/intc/intc.h>
 
 #include <arm/stm/stm32f4.h>
 #include <arm/arm/nvic.h>
-
-#include <libfont/libfont.h>
 
 #include "board.h"
 #include "gpio.h"
 
 struct stm32f4_usart_softc usart_sc;
 struct stm32f4_gpio_softc gpio_sc;
-struct stm32f4_fmc_softc fmc_sc;
 struct stm32f4_flash_softc flash_sc;
 struct stm32f4_pwr_softc pwr_sc;
 struct stm32f4_rcc_softc rcc_sc;
-struct stm32f4_ltdc_softc ltdc_sc;
-struct stm32f4_dsi_softc dsi_sc;
 struct stm32f4_timer_softc timer_sc;
 
 struct arm_nvic_softc nvic_sc;
 struct mdx_device dev_nvic = { .sc = &nvic_sc };
 
-dsi_device_t dsi_dev;
-
-extern uint32_t _smem;
-extern uint32_t _sdata;
-extern uint32_t _edata;
-extern uint32_t _sbss;
-extern uint32_t _ebss;
-
-#if 0
-static const struct sdram sdram_entry = {
-	.sdrtr = 1385,
-	.nrfs = 7,
-	.bank1 = {
-		.sdcr = { 1, 1, 2, 0, 3, 1, 2, 0, 0 },
-		.sdtr = { 2, 2, 2, 7, 4, 7, 2 },
-		.sdcmr = { 0 },
-	},
-};
-
-static const struct layer_info layers[1] = {{
-	.width = DISPLAY_WIDTH,
-	.height = DISPLAY_HEIGHT,
-	.hsync = 120,
-	.hfp = 120,
-	.hbp = 120,
-	.vsync = 12,
-	.vfp = 12,
-	.vbp = 12,
-	.bpp = 24,
-	.base = FB_BASE,
-}};
-#endif
+struct stm32f4_pwm_softc pwm_x_sc;
 
 void
 udelay(uint32_t usec)
@@ -96,7 +59,7 @@ udelay(uint32_t usec)
 
 	/* TODO: implement me */
 
-	for (i = 0; i < usec * 100; i++)
+	for (i = 0; i < usec * 42; i++)
 		;
 }
 
@@ -120,29 +83,6 @@ uart_putchar(int c, void *arg)
 	stm32f4_usart_putc(sc, c);
 }
 
-#if 0
-static void
-sdram_memtest(void)
-{
-	uint32_t *addr;
-	int i;
-
-	addr = (uint32_t *)FB_BASE;
-
-	for (i = 0; i < (1024 * 1024); i++) {
-		/* Test */
-		*(volatile uint32_t *)(addr + i) = 0xaaaaaaaa;
-		if (*(volatile uint32_t *)(addr + i) != 0xaaaaaaaa) {
-			printf("sdram test failed %x\n",
-			    *(volatile uint32_t *)(addr + i));
-				while (1);
-		}
-	}
-
-	printf("sdram test completed\n");
-}
-#endif
-
 void
 board_init(void)
 {
@@ -161,63 +101,31 @@ board_init(void)
 	pconf.rcc_cfgr = (CFGR_PPRE2_2 | CFGR_PPRE1_4);
 	stm32f4_rcc_pll_configure(&rcc_sc, &pconf);
 
-#if 0
-	stm32f4_rcc_pllsai(&rcc_sc, 192, 7, 4);
-#endif
-
-	reg = (GPIOAEN | GPIOBEN | GPIOCEN);
-	reg |= (GPIODEN | GPIOEEN | GPIOFEN);
-	reg |= (GPIOGEN | GPIOHEN | GPIOIEN);
-	reg |= (GPIOJEN | GPIOKEN);
-
 	stm32f4_flash_setup(&flash_sc);
-	stm32f4_rcc_setup(&rcc_sc, reg, 0, 0, (PWREN), (TIM1EN | USART1EN));
-
+	reg = (GPIOAEN | GPIOBEN | GPIOCEN | GPIODEN | GPIOEEN);
+	stm32f4_rcc_setup(&rcc_sc, reg, 0, 0, (TIM14EN),
+	    (TIM1EN | TIM8EN | TIM10EN | USART1EN));
 	stm32f4_gpio_init(&gpio_sc, GPIO_BASE);
 	gpio_config(&gpio_sc);
-
-#if 0
-	stm32f4_fmc_init(&fmc_sc, FMC_BASE);
-	stm32f4_fmc_setup(&fmc_sc, &sdram_entry);
-#endif
 
 	stm32f4_usart_init(&usart_sc, USART1_BASE, 84000000, 115200);
 	mdx_console_register(uart_putchar, (void *)&usart_sc);
 
 	printf("Mdepx started\n");
 
-	/* (168/4) * 2 = 84MHz / 1 PSC = 84 */
-	stm32f4_timer_init(&timer_sc, TIM1_BASE, (84000000 * 2));
+	/* (168 / PPRE2_2) * 2 = 168MHz */
+	stm32f4_timer_init(&timer_sc, TIM8_BASE, 168000000);
 	arm_nvic_init(&dev_nvic, NVIC_BASE);
 
-	mdx_intc_setup(&dev_nvic, 27, stm32f4_timer_intr, &timer_sc);
+	/* TIM 1 */
+	mdx_intc_setup(&dev_nvic, 27, stm32f4_pwm_intr, &pwm_x_sc);
 	mdx_intc_enable(&dev_nvic, 27);
 
-#if 0
-	sdram_memtest();
+	/* TIM 8 */
+	mdx_intc_setup(&dev_nvic, 46, stm32f4_timer_intr, &timer_sc);
+	mdx_intc_enable(&dev_nvic, 46);
 
-	struct stm32f4_dsi_config dconf;
-	stm32f4_ltdc_init(&ltdc_sc, LTDC_BASE);
-	stm32f4_ltdc_setup(&ltdc_sc, layers, 1);
-
-	/* Reset DSI LCD */
-	pin_set(&gpio_sc, PORT_H, 7, 0);
-	udelay(10000);
-	pin_set(&gpio_sc, PORT_H, 7, 1);
-
-	stm32f4_dsi_init(&dsi_sc, &dsi_dev, DSI_BASE);
-	dsi_dev.vchid = 0;
-
-	dconf.ndiv = 125;
-	dconf.idf = 2;
-	dconf.odf = 1;
-	dconf.nlanes = 2;
-	dconf.video_mode = 1;
-	dconf.hse_val = BOARD_OSC_FREQ;
-
-	stm32f4_dsi_setup(&dsi_sc, &dconf, &layers[0]);
-
-	otm8009a_init(&dsi_dev, OTM_FMT_RGB888,
-	    OTM_ORIENTATION_PORTRAIT);
-#endif
+	/* TIM 10 */
+	mdx_intc_setup(&dev_nvic, 25, stm32f4_pwm_intr, &pwm_x_sc);
+	mdx_intc_enable(&dev_nvic, 25);
 }
