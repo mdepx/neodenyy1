@@ -42,10 +42,12 @@ extern struct stm32f4_pwm_softc pwm_x_sc;
 
 mdx_sem_t sem;
 
-struct motor {
+struct pnp_state {
 	int pos_x;
 	int pos_y;
 };
+
+struct pnp_state pnp;
 
 void
 pnp_pwm_x_intr(void *arg, int irq)
@@ -58,29 +60,28 @@ pnp_pwm_x_intr(void *arg, int irq)
 	mdx_sem_post(&sem);
 }
 
-#if 0
-int
-is_at_home(void)
+static int
+pnp_is_x_home(void)
 {
 
 	return (pin_get(&gpio_sc, PORT_C, 6));
 }
 
-void
-move_to_home(void)
+static int
+pnp_is_y_home(void)
 {
 
-	stm32f4_pwm_setup(&pwm_x_sc);
+	return (pin_get(&gpio_sc, PORT_C, 7));
 }
-#endif
 
 static void
 pnp_xenable(void)
 {
 
 	pin_set(&gpio_sc, PORT_D, 14, 1); /* X Vref */
-	mdx_usleep(100);
+	mdx_usleep(10000);
 	pin_set(&gpio_sc, PORT_E, 6, 1); /* X ST */
+	mdx_usleep(10000);
 }
 
 static void
@@ -97,17 +98,52 @@ xstep(void)
 	stm32f4_pwm_step(&pwm_x_sc, 1 /* channel */);
 }
 
-void
-pnp_xtest(void)
+static void
+pnp_xhome(void)
 {
-	int i;
 
 	pnp_xenable();
-	pnp_xset_direction(1);
+	pnp_xset_direction(0);
 	mdx_sem_init(&sem, 0);
 
-	for (i = 0; i < 6400; i++) {
+	while (1) {
+		if (!pnp_is_y_home())
+			break;
+		if (pnp_is_x_home())
+			break;
 		xstep();
 		mdx_sem_wait(&sem);
 	}
+}
+
+static void
+pnp_yhome(void)
+{
+
+}
+
+static void
+pnp_home(void)
+{
+
+	pnp_yhome();
+	pnp_xhome();
+
+	pnp.pos_x = 0;
+	pnp.pos_y = 0;
+}
+
+static void
+pnp_move(int pos_x, int pos_y)
+{
+
+}
+
+void
+pnp_test(void)
+{
+
+	pnp_home();
+
+	pnp_move(10, 0);
 }

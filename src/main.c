@@ -56,7 +56,7 @@ main(void)
 	}
 	printf("Sleeping 2 sec done\n");
 
-	pnp_xtest();
+	pnp_test();
 
 	while (1)
 		mdx_usleep(100000);

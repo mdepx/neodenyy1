@@ -28,6 +28,6 @@
 #define	_SRC_PNP_H_
 
 void pnp_pwm_x_intr(void *arg, int irq);
-void pnp_xtest(void);
+void pnp_test(void);
 
 #endif /* !_SRC_PNP_H_ */
