@@ -396,13 +396,15 @@ pnp_move_random(void)
 	uint32_t new_y;
 	int i;
 
-	for (i = 0; i < 10; i++) {
+	for (i = 0; i < 100; i++) {
 		new_x = get_random() % PNP_MAX_X_NM;
 		new_y = get_random() % PNP_MAX_Y_NM;
-		printf("moving to %u %u\n", new_x, new_y);
+		printf("%d: moving to %u %u\n", i, new_x, new_y);
 		pnp_move_xy(new_x, new_y);
 		mdx_usleep(25000);
 	}
+
+	pnp_move_xy(0, 0);
 }
 
 int
