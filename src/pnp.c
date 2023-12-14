@@ -144,7 +144,7 @@ xstep(int speed)
 {
 	uint32_t freq;
 
-	freq = speed * 50000;
+	freq = speed * 100000;
 
 	stm32f4_pwm_step(&pwm_x_sc, (1 << 0), freq);
 }
@@ -158,7 +158,7 @@ ystep(int chanset, int speed)
 {
 	uint32_t freq;
 
-	freq = speed * 50000;
+	freq = speed * 150000;
 	//chanset = (1 << 0) | (1 << 1);
 
 	stm32f4_pwm_step(&pwm_y_sc, chanset, freq);
@@ -331,23 +331,25 @@ pnp_move(int abs_x_mm, int abs_y_mm)
 	pnp_xset_direction(xdir);
 	pnp_yset_direction(ydir);
 
-	printf("Steps to move %d %d\n", xsteps, ysteps);
+	//printf("Steps to move %d %d\n", xsteps, ysteps);
 
 	while (1) {
 		xspeed = yspeed = 100;
 
 		t = xcount < (xsteps - xcount) ? xcount : (xsteps - xcount);
-		if (t < 100) {
+		if (t < 1500) {
 			/* Gradually increase/decrease speed */
-			t /= 100;
-			xspeed = t < 25 ? 25 : t;
+			xspeed = (t * 100) / 1500;
+			if (xspeed < 15)
+				xspeed = 15;
 		}
 
 		t = ycount < (ysteps - ycount) ? ycount : (ysteps - ycount);
-		if (t < 100) {
+		if (t < 1500) {
 			/* Gradually increase/decrease speed */
-			t /= 100;
-			yspeed = t < 25 ? 25 : t;
+			yspeed = (t * 100) / 1500;
+			if (yspeed < 15)
+				yspeed = 15;
 		}
 
 		if (xstop && ystop)
@@ -378,8 +380,8 @@ pnp_move(int abs_x_mm, int abs_y_mm)
 		}
 	}
 
-	printf("new x y %d %d\n", pnp.pos_x, pnp.pos_y);
-	printf("count x y %d %d\n", xcount, ycount);
+	//printf("new x y %d %d\n", pnp.pos_x, pnp.pos_y);
+	//printf("count x y %d %d\n", xcount, ycount);
 }
 
 int
@@ -396,24 +398,6 @@ pnp_test(void)
 	pin_set(&gpio_sc, PORT_C,  6, 1); /* Vref */
 #endif
 
-#if 0
-	int i;
-
-	pnp_yset_direction(1);
-
-	mdx_sem_init(&ysem, 0);
-
-	for (i = 0; i < 10000; i++) {
-		ystep(100);
-		mdx_sem_wait(&ysem);
-	}
-
-	printf("y compl\n");
-
-	while (1)
-		mdx_usleep(100000);
-#endif
-
 	pnp_yenable();
 	pnp_xenable();
 
@@ -424,7 +408,6 @@ pnp_test(void)
 	pnp_move(100, 100);
 	mdx_usleep(20000);
 
-#if 1
 	pnp_move(50, 20);
 	mdx_usleep(20000);
 
@@ -448,7 +431,6 @@ pnp_test(void)
 
 	pnp_move(0, 0);
 	mdx_usleep(20000);
-#endif
 
 	return (0);
 }
