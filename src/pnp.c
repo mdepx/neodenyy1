@@ -71,16 +71,11 @@ struct motor_state {
 };
 
 struct pnp_state {
-	uint32_t pos_x;
-	uint32_t pos_y;
-
 	struct motor_state motor_x;
 	struct motor_state motor_y;
 };
 
 static struct pnp_state pnp;
-static mdx_sem_t xsem;
-static mdx_sem_t ysem;
 
 void
 pnp_pwm_y_intr(void *arg, int irq)
@@ -90,7 +85,6 @@ pnp_pwm_y_intr(void *arg, int irq)
 
 	stm32f4_pwm_intr(arg, irq);
 
-	//mdx_sem_post(&ysem);
 	mdx_sem_post(&pnp.motor_y.step_sem);
 }
 
@@ -102,7 +96,6 @@ pnp_pwm_x_intr(void *arg, int irq)
 
 	stm32f4_pwm_intr(arg, irq);
 
-	//mdx_sem_post(&xsem);
 	mdx_sem_post(&pnp.motor_x.step_sem);
 }
 
@@ -135,7 +128,6 @@ pnp_xenable(void)
 
 	pin_set(&gpio_sc, PORT_D, 14, 1); /* X Vref */
 	mdx_usleep(10000);
-
 	pin_set(&gpio_sc, PORT_E, 6, 1); /* X ST */
 	mdx_usleep(10000);
 }
@@ -176,12 +168,8 @@ xstep(int chanset, int speed)
 
 	freq = speed * 50000;
 
-	stm32f4_pwm_step(&pwm_x_sc, (1 << 0), freq);
+	stm32f4_pwm_step(&pwm_x_sc, chanset, freq);
 }
-
-#define	YLEFT	(1 << 0)
-#define	YRIGHT	(1 << 1)
-#define	YBOTH	(YLEFT | YRIGHT)
 
 static void
 ystep(int chanset, int speed)
@@ -264,7 +252,7 @@ mover(struct motor_state *motor, uint32_t new_pos)
 	mdx_sem_post(&motor->worker_sem);
 }
 
-static int __unused
+static int
 pnp_move_xy(uint32_t new_pos_x, uint32_t new_pos_y)
 {
 
@@ -331,223 +319,6 @@ pnp_move_home(void)
 
 	pnp_move_home_motor(&pnp.motor_y);
 	pnp_move_home_motor(&pnp.motor_x);
-}
-
-static int
-pnp_xhome(void)
-{
-	int error;
-
-	pnp_xset_direction(0);
-	mdx_sem_init(&xsem, 0);
-
-	error = 0;
-
-	while (1) {
-		if (!pnp_is_yl_home()) {
-			error = 1;
-			break;
-		}
-		if (pnp_is_x_home())
-			break;
-		xstep(0, 25);
-		mdx_sem_wait(&xsem);
-	}
-
-	if (pnp_is_yl_home() && pnp_is_x_home())
-		printf("We are home\n");
-	else
-		printf("We are not at home\n");
-
-	return (error);
-}
-
-static int
-pnp_yhome(void)
-{
-	int count;
-	int speed;
-	int i;
-
-	speed = 25;
-
-	mdx_sem_init(&ysem, 0);
-
-	if (pnp_is_yl_home()) {
-		/* Already at home, move back a bit. */
-		pnp_yset_direction(1);
-		for (i = 0; i < (PNP_STEPS_PER_MM * 10); i++) {
-			ystep(YBOTH, speed);
-			mdx_sem_wait(&ysem);
-		}
-	}
-
-	if (pnp_is_yl_home())
-		panic("still at home");
-
-	/* Now try to reach home. */
-	pnp_yset_direction(0);
-
-	count = -1;
-
-	while (1) {
-#if 0
-		if (pnp_is_yl_home() && pnp_is_yr_home())
-			break;
-		else if (!pnp_is_yl_home() && pnp_is_yr_home())
-			ystep(YLEFT, 30);
-		else if (pnp_is_yl_home() && !pnp_is_yr_home())
-			ystep(YRIGHT, 30);
-		else if (!pnp_is_yl_home() && !pnp_is_yr_home())
-			ystep(YBOTH, 60);
-#endif
-
-		if (pnp_is_yl_home() && count == -1) {
-			/*
-			 * We have reached home for the first time.
-			 * But we need to move a mm or so into home.
-			 */
-			count = PNP_STEPS_PER_MM;
-			speed = 15;
-		}
-
-		if (count > 0)
-			count--;
-
-		if (count == 0)
-			break;
-
-		ystep(YBOTH, speed);
-		mdx_sem_wait(&ysem);
-	}
-
-	printf("y compl\n");
-
-	return (0);
-}
-
-static int
-pnp_home(void)
-{
-	int error;
-
-	error = pnp_yhome();
-	if (error)
-		return (error);
-
-	error = pnp_xhome();
-	if (error)
-		return (error);
-
-	pnp.pos_x = 0;
-	pnp.pos_y = 0;
-
-	return (0);
-}
-
-static void
-pnp_move(uint32_t new_pos_x, uint32_t new_pos_y)
-{
-	uint32_t xsteps, ysteps;
-	uint32_t xdelta, ydelta;
-	uint32_t t;
-	int xcount, ycount;
-	int xspeed, yspeed;
-	int xdir, ydir;
-	int xstop, ystop;
-
-	xcount = ycount = 0;
-	xstop = ystop = 0;
-
-	if (new_pos_x > PNP_MAX_X_NM)
-		new_pos_x = PNP_MAX_X_NM;
-	if (new_pos_x < 0)
-		new_pos_x = 0;
-
-	if (new_pos_y > PNP_MAX_Y_NM)
-		new_pos_y = PNP_MAX_Y_NM;
-	if (new_pos_y < 0)
-		new_pos_y = 0;
-
-	if (new_pos_x == pnp.pos_x)
-		xstop = 1;
-	if (new_pos_y == pnp.pos_y)
-		ystop = 1;
-
-	if (new_pos_x > pnp.pos_x) {
-		xdir = 1;
-		xdelta = new_pos_x - pnp.pos_x;
-	} else {
-		xdir = 0;
-		xdelta = pnp.pos_x - new_pos_x;
-	}
-
-	if (new_pos_y > pnp.pos_y) {
-		ydir = 1;
-		ydelta = new_pos_y - pnp.pos_y;
-	} else {
-		ydir = 0;
-		ydelta = pnp.pos_y - new_pos_y;
-	}
-
-	xsteps = xdelta / PNP_STEP_NM;
-	ysteps = ydelta / PNP_STEP_NM;
-	pnp_xset_direction(xdir);
-	pnp_yset_direction(ydir);
-
-	//printf("Steps to move %d %d\n", xsteps, ysteps);
-
-	while (1) {
-		xspeed = yspeed = 100;
-
-		t = xcount < (xsteps - xcount) ? xcount : (xsteps - xcount);
-		if (t < 1000) {
-			/* Gradually increase/decrease speed */
-			xspeed = (t * 100) / 1000;
-			if (xspeed < 15)
-				xspeed = 15;
-		}
-
-		t = ycount < (ysteps - ycount) ? ycount : (ysteps - ycount);
-		if (t < 1000) {
-			/* Gradually increase/decrease speed */
-			yspeed = (t * 100) / 1000;
-			if (yspeed < 15)
-				yspeed = 15;
-		}
-
-	//printf("%d %d\n", xspeed, yspeed);
-
-		if (xstop && ystop)
-			break;
-		if (xstop == 0)
-			xstep(0, xspeed);
-		if (ystop == 0)
-			ystep(YBOTH, yspeed);
-
-		if (xstop == 0) {
-			mdx_sem_wait(&xsem);
-			if (xcount++ == (xsteps - 1))
-				xstop = 1;
-			if (xdir == 1)
-				pnp.pos_x += PNP_STEP_NM;
-			else
-				pnp.pos_x -= PNP_STEP_NM;
-		}
-
-		if (ystop == 0) {
-			mdx_sem_wait(&ysem);
-			if (ycount++ == (ysteps - 1))
-				ystop = 1;
-			if (ydir == 1)
-				pnp.pos_y += PNP_STEP_NM;
-			else
-				pnp.pos_y -= PNP_STEP_NM;
-		}
-	}
-
-	//printf("new x y %d %d\n", pnp.pos_x, pnp.pos_y);
-	//printf("count x y %d %d\n", xcount, ycount);
 }
 
 static uint32_t
@@ -619,7 +390,7 @@ pnp_initialize(void)
 }
 
 static void
-pnp_test_new(void)
+pnp_move_random(void)
 {
 	uint32_t new_x;
 	uint32_t new_y;
@@ -637,10 +408,6 @@ pnp_test_new(void)
 int
 pnp_test(void)
 {
-	uint32_t new_x;
-	uint32_t new_y;
-	int error;
-	int i;
 
 #if 1
 	/* TODO */
@@ -648,29 +415,9 @@ pnp_test(void)
 	pin_set(&gpio_sc, PORT_C,  6, 1); /* Vref */
 #endif
 
-	pnp.pos_x = -1;
-	pnp.pos_y = -1;
-
 	pnp_initialize();
 	pnp_move_home();
-	pnp_test_new();
-
-	return (0);
-
-	error = pnp_home();
-	if (error)
-		return (error);
-
-	for (i = 0; i < 10; i++) {
-		new_x = get_random() % PNP_MAX_X_NM;
-		new_y = get_random() % PNP_MAX_Y_NM;
-		printf("moving to %u %u\n", new_x, new_y);
-		pnp_move(new_x, new_y);
-		mdx_usleep(25000);
-	}
-
-	pnp_move(0, 0);
-	printf("Final x y %d %d\n", pnp.pos_x, pnp.pos_y);
+	pnp_move_random();
 
 	return (0);
 }
