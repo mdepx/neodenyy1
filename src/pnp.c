@@ -303,7 +303,6 @@ pnp_move(uint32_t new_pos_x, uint32_t new_pos_y)
 
 	if (new_pos_x == pnp.pos_x)
 		xstop = 1;
-
 	if (new_pos_y == pnp.pos_y)
 		ystop = 1;
 
@@ -334,20 +333,22 @@ pnp_move(uint32_t new_pos_x, uint32_t new_pos_y)
 		xspeed = yspeed = 100;
 
 		t = xcount < (xsteps - xcount) ? xcount : (xsteps - xcount);
-		if (t < 1500) {
+		if (t < 1000) {
 			/* Gradually increase/decrease speed */
-			xspeed = (t * 100) / 1500;
+			xspeed = (t * 100) / 1000;
 			if (xspeed < 15)
 				xspeed = 15;
 		}
 
 		t = ycount < (ysteps - ycount) ? ycount : (ysteps - ycount);
-		if (t < 1500) {
+		if (t < 1000) {
 			/* Gradually increase/decrease speed */
-			yspeed = (t * 100) / 1500;
+			yspeed = (t * 100) / 1000;
 			if (yspeed < 15)
 				yspeed = 15;
 		}
+
+	//printf("%d %d\n", xspeed, yspeed);
 
 		if (xstop && ystop)
 			break;
@@ -425,8 +426,11 @@ pnp_test(void)
 		new_y = get_random() % PNP_MAX_Y_NM;
 		printf("moving to %u %u\n", new_x, new_y);
 		pnp_move(new_x, new_y);
-		mdx_usleep(100000);
+		mdx_usleep(25000);
 	}
+
+	pnp_move(0, 0);
+	printf("Final x y %d %d\n", pnp.pos_x, pnp.pos_y);
 
 	return (0);
 }
