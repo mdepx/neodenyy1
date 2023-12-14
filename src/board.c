@@ -116,6 +116,9 @@ board_init(void)
 
 	stm32f4_rng_init(&rng_sc, RNG_BASE);
 
+	malloc_init();
+	malloc_add_region((void *)0x20008000, 32 * 1024);
+
 	printf("Mdepx started\n");
 
 	/* All timers: (168 / PPRE2_4) * 2 = 84MHz */

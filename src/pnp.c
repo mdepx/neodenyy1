@@ -29,6 +29,7 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/sem.h>
+#include <sys/thread.h>
 
 #include <dev/display/panel.h>
 #include <dev/display/dsi.h>
@@ -47,9 +48,25 @@ extern struct stm32f4_rng_softc rng_sc;
 #define	PNP_STEP_NM	6250		/* Length of a step, nanometers */
 #define	PNP_STEPS_PER_MM	160
 
+struct move_task {
+	uint32_t new_pos;
+};
+
+struct motor_state {
+	uint32_t pos;
+	uint32_t dir;
+	uint32_t chanset;	/* PWM channels. */
+	mdx_sem_t worker_sem;
+	struct move_task task;
+	char *name;
+};
+
 struct pnp_state {
 	uint32_t pos_x;
 	uint32_t pos_y;
+
+	struct motor_state motor_x;
+	struct motor_state motor_y;
 };
 
 static struct pnp_state pnp;
@@ -163,6 +180,42 @@ ystep(int chanset, int speed)
 	//chanset = (1 << 0) | (1 << 1);
 
 	stm32f4_pwm_step(&pwm_y_sc, chanset, freq);
+}
+
+static void
+pnp_worker_thread(void *arg)
+{
+	struct motor_state *motor;
+
+	motor = arg;
+
+	while (1) {
+		mdx_sem_wait(&motor->worker_sem);
+		printf("%s: task received\n", __func__);
+	}
+}
+
+static void
+mover(struct motor_state *motor, uint32_t new_pos)
+{
+
+	motor->task.new_pos = new_pos < 0 ? new_pos : 0;
+	mdx_sem_post(&motor->worker_sem);
+}
+
+static int __unused
+pnp_move_xy(uint32_t new_pos_x, uint32_t new_pos_y)
+{
+
+	if (new_pos_x > PNP_MAX_X_NM)
+		new_pos_x = PNP_MAX_X_NM;
+	if (new_pos_y > PNP_MAX_Y_NM)
+		new_pos_y = PNP_MAX_Y_NM;
+
+	mover(&pnp.motor_x, new_pos_x);
+	//mover(&pnp.motor_y, new_pos_y);
+
+	return (0);
 }
 
 static int
@@ -397,6 +450,51 @@ get_random(void)
 	return (data);
 }
 
+static void
+pnp_motor_initialize(struct motor_state *state, char *name)
+{
+
+	mdx_sem_init(&state->worker_sem, 0);
+	state->name = name;
+}
+
+static int
+pnp_initialize(void)
+{
+	struct thread *td1, *td2;
+
+	bzero(&pnp, sizeof(struct pnp_state));
+
+	td1 = mdx_thread_create("X Motor", 1 /* prio */, 500 /* quantum */,
+	    8192 /* stack */, pnp_worker_thread, &pnp.motor_x);
+	if (td1 == NULL) {
+		printf("%s: Failed to create X mover thread\n", __func__);
+		return (-1);
+	}
+
+	td2 = mdx_thread_create("Y Motor", 1 /* prio */, 500 /* quantum */,
+	    8192 /* stack */, pnp_worker_thread, &pnp.motor_y);
+	if (td2 == NULL) {
+		printf("%s: Failed to create Y mover thread\n", __func__);
+		return (-1);
+	}
+
+	mdx_sched_add(td1);
+	mdx_sched_add(td2);
+
+	pnp_motor_initialize(&pnp.motor_x, "X Motor");
+	pnp_motor_initialize(&pnp.motor_y, "Y Motor");
+
+	return (0);
+}
+
+static void
+pnp_test_new(void)
+{
+
+	pnp_move_xy(100 * 1000000, 300 * 1000000);
+}
+
 int
 pnp_test(void)
 {
@@ -407,6 +505,12 @@ pnp_test(void)
 
 	pnp.pos_x = -1;
 	pnp.pos_y = -1;
+
+	pnp_initialize();
+	pnp_test_new();
+
+	while (1)
+		mdx_usleep(100000);
 
 #if 1
 	/* TODO */
