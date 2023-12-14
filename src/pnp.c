@@ -337,6 +337,39 @@ pnp_move_xy(uint32_t new_pos_x, uint32_t new_pos_y)
 	return (0);
 }
 
+static int
+pnp_move_z(uint32_t new_pos)
+{
+	struct motor_state *motor;
+	struct move_task *task;
+	uint32_t delta;
+
+	motor = &pnp.motor_z;
+	task = &motor->task;
+	task->check_home = 0;
+	task->speed_control = 0;
+
+	task->new_pos = new_pos < 0 ? 0 : new_pos;
+	if (task->new_pos > motor->pos) {
+		task->dir = 1;
+		delta = task->new_pos - motor->pos;
+	} else {
+		task->dir = 0;
+		delta = motor->pos - task->new_pos;
+	}
+
+	task->steps = delta / PNP_STEP_NM;
+	task->speed = 50;
+
+	motor->set_direction(task->dir);
+	mdx_sem_post(&motor->worker_sem);
+	mdx_sem_wait(&motor->task.task_compl_sem);
+
+	printf("%s: new z %u\n", __func__, motor->pos);
+
+	return (0);
+}
+
 static void
 pnp_move_home_motor(struct motor_state *motor)
 {
@@ -384,6 +417,7 @@ static int
 pnp_move_home_z(struct motor_state *motor)
 {
 	struct move_task *task;
+	int found;
 	int steps;
 	int dir;
 	int i;
@@ -405,6 +439,7 @@ pnp_move_home_z(struct motor_state *motor)
 
 	steps = 100;
 	dir = 1;
+	found = 0;
 
 	/* Now find home once again. */
 	for (i = 0; i < 20; i++) {
@@ -418,11 +453,16 @@ pnp_move_home_z(struct motor_state *motor)
 		mdx_sem_post(&motor->worker_sem);
 		mdx_sem_wait(&task->task_compl_sem);
 		if (task->home_found) {
-			printf("Home not found\n");
-			return (-1);
+			found = 1;
+			break;
 		}
 		steps += 200;
 		dir = !dir;
+	}
+
+	if (found == 0) {
+		printf("Error: Z Home not found\n");
+		return (-1);
 	}
 
 	/* Now make 50 steps into home. */
@@ -435,18 +475,25 @@ pnp_move_home_z(struct motor_state *motor)
 	mdx_sem_post(&motor->worker_sem);
 	mdx_sem_wait(&task->task_compl_sem);
 
+	motor->pos = 0;
 	printf("z home found\n");
 
 	return (0);
 }
 
-static void
+static int
 pnp_move_home(void)
 {
+	int error;
 
-	pnp_move_home_z(&pnp.motor_z);
+	error = pnp_move_home_z(&pnp.motor_z);
+	if (error)
+		return (error);
+
 	pnp_move_home_motor(&pnp.motor_y);
 	pnp_move_home_motor(&pnp.motor_x);
+
+	return (0);
 }
 
 static uint32_t
@@ -545,6 +592,9 @@ pnp_move_random(void)
 		new_y = get_random() % PNP_MAX_Y_NM;
 		printf("%d: moving to %u %u\n", i, new_x, new_y);
 		pnp_move_xy(new_x, new_y);
+		pnp_move_z(15000000);
+		mdx_usleep(25000);
+		pnp_move_z(0);
 		mdx_usleep(25000);
 	}
 
@@ -554,6 +604,7 @@ pnp_move_random(void)
 int
 pnp_test(void)
 {
+	int error;
 
 #if 1
 	/* TODO */
@@ -561,7 +612,9 @@ pnp_test(void)
 #endif
 
 	pnp_initialize();
-	pnp_move_home();
+	error = pnp_move_home();
+	if (error)
+		return (error);
 	pnp_move_random();
 
 	return (0);
