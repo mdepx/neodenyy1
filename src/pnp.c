@@ -207,7 +207,7 @@ pnp_worker_thread(void *arg)
 
 	while (1) {
 		mdx_sem_wait(&motor->worker_sem);
-		printf("%s: TR\n", __func__);
+		//printf("%s: TR\n", __func__);
 
 		steps = task->steps;
 		speed = task->speed;
@@ -225,7 +225,7 @@ pnp_worker_thread(void *arg)
 				motor->pos -= PNP_STEP_NM;
 		}
 
-		printf("%s: new pos %d\n", motor->name, motor->pos);
+		//printf("%s: new pos %d\n", motor->name, motor->pos);
 		mdx_sem_post(&task->task_compl_sem);
 	}
 }
@@ -268,6 +268,9 @@ pnp_move_xy(uint32_t new_pos_x, uint32_t new_pos_y)
 
 	mdx_sem_wait(&pnp.motor_x.task.task_compl_sem);
 	mdx_sem_wait(&pnp.motor_y.task.task_compl_sem);
+
+	printf("%s: new pos %d %d\n", __func__, pnp.motor_x.pos,
+	    pnp.motor_y.pos);
 
 	return (0);
 }
@@ -608,8 +611,17 @@ pnp_initialize(void)
 static void
 pnp_test_new(void)
 {
+	uint32_t new_x;
+	uint32_t new_y;
+	int i;
 
-	pnp_move_xy(100 * 1000000, 100 * 1000000);
+	for (i = 0; i < 10; i++) {
+		new_x = get_random() % PNP_MAX_X_NM;
+		new_y = get_random() % PNP_MAX_Y_NM;
+		printf("moving to %u %u\n", new_x, new_y);
+		pnp_move_xy(new_x, new_y);
+		mdx_usleep(25000);
+	}
 }
 
 int
@@ -631,10 +643,6 @@ pnp_test(void)
 
 	pnp_initialize();
 	pnp_move_home();
-
-	while (1)
-		mdx_usleep(100000);
-
 	pnp_test_new();
 
 	return (0);
