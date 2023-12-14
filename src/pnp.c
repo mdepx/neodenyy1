@@ -50,6 +50,10 @@ extern struct stm32f4_rng_softc rng_sc;
 
 struct move_task {
 	uint32_t new_pos;
+	uint32_t steps;
+	int check_home;
+	int dir;
+	int speed;
 };
 
 struct motor_state {
@@ -60,7 +64,7 @@ struct motor_state {
 	struct move_task task;
 	char *name;
 	void (*set_direction)(int dir);
-
+	int (*is_at_home)(void);
 	void (*step)(int chanset, int speed);
 	mdx_sem_t step_sem;
 };
@@ -194,36 +198,27 @@ pnp_worker_thread(void *arg)
 	struct motor_state *motor;
 	struct move_task *task;
 	uint32_t steps;
-	uint32_t delta;
 	int speed;
-	int dir;
 	int i;
 
 	motor = arg;
+	task = &motor->task;
 
 	while (1) {
 		mdx_sem_wait(&motor->worker_sem);
-		printf("%s: task received\n", __func__);
+		printf("%s: TR\n", __func__);
 
-		task = &motor->task;
+		steps = task->steps;
+		speed = task->speed;
 
-		if (task->new_pos > motor->pos) {
-			dir = 1;
-			delta = task->new_pos - motor->pos;
-		} else {
-			dir = 0;
-			delta = motor->pos - task->new_pos;
-		}
-
-		speed = 50;
-		steps = delta / PNP_STEP_NM;
 		printf("%s: steps needed %d\n", __func__, steps);
-		motor->set_direction(dir);
 
 		for (i = 0; i < steps; i++) {
+			if (task->check_home && motor->is_at_home())
+				break;
 			motor->step(motor->chanset, speed);
 			mdx_sem_wait(&motor->step_sem);
-			if (dir == 1)
+			if (task->dir == 1)
 				motor->pos += PNP_STEP_NM;
 			else
 				motor->pos -= PNP_STEP_NM;
@@ -236,8 +231,25 @@ pnp_worker_thread(void *arg)
 static void
 mover(struct motor_state *motor, uint32_t new_pos)
 {
+	struct move_task *task;
+	uint32_t delta;
 
-	motor->task.new_pos = new_pos < 0 ? 0 : new_pos;
+	task = &motor->task;
+
+	task->new_pos = new_pos < 0 ? 0 : new_pos;
+	if (task->new_pos > motor->pos) {
+		task->dir = 1;
+		delta = task->new_pos - motor->pos;
+	} else {
+		task->dir = 0;
+		delta = motor->pos - task->new_pos;
+	}
+
+	task->steps = delta / PNP_STEP_NM;
+	task->speed = 50;
+
+	motor->set_direction(task->dir);
+
 	mdx_sem_post(&motor->worker_sem);
 }
 
@@ -525,16 +537,25 @@ pnp_initialize(void)
 	pnp.motor_x.set_direction = pnp_xset_direction;
 	pnp.motor_x.step = xstep;
 	pnp.motor_x.chanset = (1 << 0);
+	pnp.motor_x.is_at_home = pnp_is_x_home;
 
 	pnp_motor_initialize(&pnp.motor_y, "Y Motor");
 	pnp.motor_y.set_direction = pnp_yset_direction;
 	pnp.motor_y.step = ystep;
 	pnp.motor_y.chanset = ((1 << 0) | (1 << 1));
+	pnp.motor_x.is_at_home = pnp_is_yl_home;
 
 	pnp_xenable();
 	pnp_yenable();
 
 	return (0);
+}
+
+static void
+pnp_move_home(void)
+{
+
+	//pnp_move_xy(100 * 1000000, 100 * 1000000);
 }
 
 static void
@@ -562,6 +583,7 @@ pnp_test(void)
 	pnp.pos_y = -1;
 
 	pnp_initialize();
+	pnp_move_home();
 	pnp_test_new();
 
 	while (1)
