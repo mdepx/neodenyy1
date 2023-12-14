@@ -184,7 +184,6 @@ ystep(int chanset, int speed)
 	uint32_t freq;
 
 	freq = speed * 50000;
-	//chanset = (1 << 0) | (1 << 1);
 
 	stm32f4_pwm_step(&pwm_y_sc, chanset, freq);
 }
@@ -252,7 +251,7 @@ pnp_move_xy(uint32_t new_pos_x, uint32_t new_pos_y)
 		new_pos_y = PNP_MAX_Y_NM;
 
 	mover(&pnp.motor_x, new_pos_x);
-	//mover(&pnp.motor_y, new_pos_y);
+	mover(&pnp.motor_y, new_pos_y);
 
 	return (0);
 }
@@ -525,12 +524,15 @@ pnp_initialize(void)
 	pnp_motor_initialize(&pnp.motor_x, "X Motor");
 	pnp.motor_x.set_direction = pnp_xset_direction;
 	pnp.motor_x.step = xstep;
+	pnp.motor_x.chanset = (1 << 0);
 
 	pnp_motor_initialize(&pnp.motor_y, "Y Motor");
 	pnp.motor_y.set_direction = pnp_yset_direction;
 	pnp.motor_y.step = ystep;
+	pnp.motor_y.chanset = ((1 << 0) | (1 << 1));
 
 	pnp_xenable();
+	pnp_yenable();
 
 	return (0);
 }
@@ -539,7 +541,7 @@ static void
 pnp_test_new(void)
 {
 
-	pnp_move_xy(100 * 1000000, 300 * 1000000);
+	pnp_move_xy(100 * 1000000, 100 * 1000000);
 }
 
 int
@@ -549,6 +551,12 @@ pnp_test(void)
 	uint32_t new_y;
 	int error;
 	int i;
+
+#if 1
+	/* TODO */
+	pin_set(&gpio_sc, PORT_D, 15, 1); /* Vref */
+	pin_set(&gpio_sc, PORT_C,  6, 1); /* Vref */
+#endif
 
 	pnp.pos_x = -1;
 	pnp.pos_y = -1;
@@ -560,15 +568,6 @@ pnp_test(void)
 		mdx_usleep(100000);
 
 	return (0);
-
-#if 1
-	/* TODO */
-	pin_set(&gpio_sc, PORT_D, 15, 1); /* Vref */
-	pin_set(&gpio_sc, PORT_C,  6, 1); /* Vref */
-#endif
-
-	pnp_yenable();
-	pnp_xenable();
 
 	error = pnp_home();
 	if (error)
