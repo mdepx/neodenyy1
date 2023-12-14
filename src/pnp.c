@@ -59,6 +59,10 @@ struct motor_state {
 	mdx_sem_t worker_sem;
 	struct move_task task;
 	char *name;
+	void (*set_direction)(int dir);
+
+	void (*step)(int chanset, int speed);
+	mdx_sem_t step_sem;
 };
 
 struct pnp_state {
@@ -81,7 +85,8 @@ pnp_pwm_y_intr(void *arg, int irq)
 
 	stm32f4_pwm_intr(arg, irq);
 
-	mdx_sem_post(&ysem);
+	//mdx_sem_post(&ysem);
+	mdx_sem_post(&pnp.motor_y.step_sem);
 }
 
 void
@@ -92,7 +97,8 @@ pnp_pwm_x_intr(void *arg, int irq)
 
 	stm32f4_pwm_intr(arg, irq);
 
-	mdx_sem_post(&xsem);
+	//mdx_sem_post(&xsem);
+	mdx_sem_post(&pnp.motor_x.step_sem);
 }
 
 static int
@@ -124,6 +130,7 @@ pnp_xenable(void)
 
 	pin_set(&gpio_sc, PORT_D, 14, 1); /* X Vref */
 	mdx_usleep(10000);
+
 	pin_set(&gpio_sc, PORT_E, 6, 1); /* X ST */
 	mdx_usleep(10000);
 }
@@ -158,7 +165,7 @@ pnp_yset_direction(int dir)
 }
 
 static void
-xstep(int speed)
+xstep(int chanset, int speed)
 {
 	uint32_t freq;
 
@@ -186,12 +193,44 @@ static void
 pnp_worker_thread(void *arg)
 {
 	struct motor_state *motor;
+	struct move_task *task;
+	uint32_t steps;
+	uint32_t delta;
+	int speed;
+	int dir;
+	int i;
 
 	motor = arg;
 
 	while (1) {
 		mdx_sem_wait(&motor->worker_sem);
 		printf("%s: task received\n", __func__);
+
+		task = &motor->task;
+
+		if (task->new_pos > motor->pos) {
+			dir = 1;
+			delta = task->new_pos - motor->pos;
+		} else {
+			dir = 0;
+			delta = motor->pos - task->new_pos;
+		}
+
+		speed = 50;
+		steps = delta / PNP_STEP_NM;
+		printf("%s: steps needed %d\n", __func__, steps);
+		motor->set_direction(dir);
+
+		for (i = 0; i < steps; i++) {
+			motor->step(motor->chanset, speed);
+			mdx_sem_wait(&motor->step_sem);
+			if (dir == 1)
+				motor->pos += PNP_STEP_NM;
+			else
+				motor->pos -= PNP_STEP_NM;
+		}
+
+		printf("%s: new pos %d\n", motor->name, motor->pos);
 	}
 }
 
@@ -199,7 +238,7 @@ static void
 mover(struct motor_state *motor, uint32_t new_pos)
 {
 
-	motor->task.new_pos = new_pos < 0 ? new_pos : 0;
+	motor->task.new_pos = new_pos < 0 ? 0 : new_pos;
 	mdx_sem_post(&motor->worker_sem);
 }
 
@@ -235,7 +274,7 @@ pnp_xhome(void)
 		}
 		if (pnp_is_x_home())
 			break;
-		xstep(25);
+		xstep(0, 25);
 		mdx_sem_wait(&xsem);
 	}
 
@@ -406,7 +445,7 @@ pnp_move(uint32_t new_pos_x, uint32_t new_pos_y)
 		if (xstop && ystop)
 			break;
 		if (xstop == 0)
-			xstep(xspeed);
+			xstep(0, xspeed);
 		if (ystop == 0)
 			ystep(YBOTH, yspeed);
 
@@ -455,6 +494,7 @@ pnp_motor_initialize(struct motor_state *state, char *name)
 {
 
 	mdx_sem_init(&state->worker_sem, 0);
+	mdx_sem_init(&state->step_sem, 0);
 	state->name = name;
 }
 
@@ -483,7 +523,14 @@ pnp_initialize(void)
 	mdx_sched_add(td2);
 
 	pnp_motor_initialize(&pnp.motor_x, "X Motor");
+	pnp.motor_x.set_direction = pnp_xset_direction;
+	pnp.motor_x.step = xstep;
+
 	pnp_motor_initialize(&pnp.motor_y, "Y Motor");
+	pnp.motor_y.set_direction = pnp_yset_direction;
+	pnp.motor_y.step = ystep;
+
+	pnp_xenable();
 
 	return (0);
 }
@@ -511,6 +558,8 @@ pnp_test(void)
 
 	while (1)
 		mdx_usleep(100000);
+
+	return (0);
 
 #if 1
 	/* TODO */
