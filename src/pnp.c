@@ -50,8 +50,8 @@ extern struct stm32f4_rng_softc rng_sc;
 #define	PNP_STEPS_PER_MM	160
 
 struct move_task {
-	uint32_t new_pos;
-	uint32_t steps;
+	int new_pos;
+	int steps;
 	int check_home;
 	int dir;
 	int speed;
@@ -63,9 +63,9 @@ struct move_task {
 };
 
 struct motor_state {
-	uint32_t pos;
-	uint32_t dir;
-	uint32_t chanset;	/* PWM channels. */
+	int pos;
+	int dir;
+	int chanset;	/* PWM channels. */
 	mdx_sem_t worker_sem;
 	struct move_task task;
 	char *name;
@@ -207,7 +207,7 @@ xstep(int chanset, int speed)
 {
 	uint32_t freq;
 
-	freq = speed * 50000;
+	freq = speed * 150000;
 
 	stm32f4_pwm_step(&pwm_x_sc, chanset, freq);
 }
@@ -217,7 +217,7 @@ ystep(int chanset, int speed)
 {
 	uint32_t freq;
 
-	freq = speed * 50000;
+	freq = speed * 150000;
 
 	stm32f4_pwm_step(&pwm_y_sc, chanset, freq);
 }
@@ -227,7 +227,7 @@ zstep(int chanset, int speed)
 {
 	uint32_t freq;
 
-	freq = speed * 50000;
+	freq = speed * 60000;
 
 	stm32f4_pwm_step(&pwm_z_sc, chanset, freq);
 }
@@ -338,18 +338,18 @@ pnp_move_xy(uint32_t new_pos_x, uint32_t new_pos_y)
 }
 
 static int
-pnp_move_z(uint32_t new_pos)
+pnp_move_z(int new_pos)
 {
 	struct motor_state *motor;
 	struct move_task *task;
-	uint32_t delta;
+	int delta;
 
 	motor = &pnp.motor_z;
 	task = &motor->task;
 	task->check_home = 0;
 	task->speed_control = 0;
 
-	task->new_pos = new_pos < 0 ? 0 : new_pos;
+	task->new_pos = new_pos;
 	if (task->new_pos > motor->pos) {
 		task->dir = 1;
 		delta = task->new_pos - motor->pos;
@@ -358,14 +358,14 @@ pnp_move_z(uint32_t new_pos)
 		delta = motor->pos - task->new_pos;
 	}
 
-	task->steps = delta / PNP_STEP_NM;
-	task->speed = 75;
+	task->steps = abs(delta) / PNP_STEP_NM;
+	task->speed = 100;
 
 	motor->set_direction(task->dir);
 	mdx_sem_post(&motor->worker_sem);
 	mdx_sem_wait(&motor->task.task_compl_sem);
 
-	printf("%s: new z %u\n", __func__, motor->pos);
+	printf("%s: new z %d\n", __func__, motor->pos);
 
 	return (0);
 }
@@ -592,6 +592,7 @@ pnp_move_random(void)
 		new_y = get_random() % PNP_MAX_Y_NM;
 		printf("%d: moving to %u %u\n", i, new_x, new_y);
 		pnp_move_xy(new_x, new_y);
+		pnp_move_z(-15000000);
 		pnp_move_z(15000000);
 		pnp_move_z(0);
 	}
