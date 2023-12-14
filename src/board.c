@@ -54,6 +54,7 @@ struct mdx_device dev_nvic = { .sc = &nvic_sc };
 
 struct stm32f4_pwm_softc pwm_x_sc;
 struct stm32f4_pwm_softc pwm_y_sc;
+struct stm32f4_pwm_softc pwm_z_sc;
 
 void
 udelay(uint32_t usec)
@@ -117,7 +118,7 @@ board_init(void)
 	stm32f4_rng_init(&rng_sc, RNG_BASE);
 
 	malloc_init();
-	malloc_add_region((void *)0x20008000, 32 * 1024);
+	malloc_add_region((void *)0x20008000, 64 * 1024);
 
 	printf("Mdepx started\n");
 
@@ -134,8 +135,13 @@ board_init(void)
 	mdx_intc_setup(&dev_nvic, 25, pnp_pwm_x_intr, &pwm_x_sc);
 	mdx_intc_enable(&dev_nvic, 25);
 
-	/* Y L/R Motors / TIM4 */
+	/* Y L/R Motors / TIM4 CH1,CH2 */
 	stm32f4_pwm_init(&pwm_y_sc, TIM4_BASE, 84000000);
 	mdx_intc_setup(&dev_nvic, 30, pnp_pwm_y_intr, &pwm_y_sc);
 	mdx_intc_enable(&dev_nvic, 30);
+
+	/* Z Motors / TIM14 CH1 */
+	stm32f4_pwm_init(&pwm_z_sc, TIM14_BASE, 84000000);
+	mdx_intc_setup(&dev_nvic, 45, pnp_pwm_z_intr, &pwm_z_sc);
+	mdx_intc_enable(&dev_nvic, 45);
 }

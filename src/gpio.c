@@ -43,7 +43,7 @@ static const struct gpio_pin neodenyy1_pins[] = {
 	{ PORT_B, 5, MODE_INP, 0, PULLDOWN }, /* NS */
 
 	/* At least one head is at Z. */
-	{ PORT_B, 4, MODE_INP, 0, PULLDOWN }, /* SZ */
+	{ PORT_B, 4, MODE_INP, 0, FLOAT }, /* SZ */
 
 	/* Head 1 has component. */
 	{ PORT_B, 3, MODE_INP, 0, PULLDOWN }, /* S1 */

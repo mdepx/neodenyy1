@@ -41,6 +41,7 @@
 extern struct stm32f4_gpio_softc gpio_sc;
 extern struct stm32f4_pwm_softc pwm_x_sc;
 extern struct stm32f4_pwm_softc pwm_y_sc;
+extern struct stm32f4_pwm_softc pwm_z_sc;
 extern struct stm32f4_rng_softc rng_sc;
 
 #define	PNP_MAX_X_NM	300000000	/* nanometers */
@@ -55,6 +56,10 @@ struct move_task {
 	int dir;
 	int speed;
 	mdx_sem_t task_compl_sem;
+	int speed_control;
+
+	/* Result */
+	int home_found;
 };
 
 struct motor_state {
@@ -73,6 +78,7 @@ struct motor_state {
 struct pnp_state {
 	struct motor_state motor_x;
 	struct motor_state motor_y;
+	struct motor_state motor_z;
 };
 
 static struct pnp_state pnp;
@@ -99,6 +105,17 @@ pnp_pwm_x_intr(void *arg, int irq)
 	mdx_sem_post(&pnp.motor_x.step_sem);
 }
 
+void
+pnp_pwm_z_intr(void *arg, int irq)
+{
+
+	/* Step completed. */
+
+	stm32f4_pwm_intr(arg, irq);
+
+	mdx_sem_post(&pnp.motor_z.step_sem);
+}
+
 static int
 pnp_is_x_home(void)
 {
@@ -113,6 +130,13 @@ pnp_is_yl_home(void)
 	return (pin_get(&gpio_sc, PORT_C, 7));
 }
 
+static int
+pnp_is_z_home(void)
+{
+
+	return (pin_get(&gpio_sc, PORT_B, 4));
+}
+
 #if 0
 static int
 pnp_is_yr_home(void)
@@ -123,23 +147,33 @@ pnp_is_yr_home(void)
 #endif
 
 static void
-pnp_xenable(void)
+pnp_xenable(int enable)
 {
 
-	pin_set(&gpio_sc, PORT_D, 14, 1); /* X Vref */
+	pin_set(&gpio_sc, PORT_D, 14, enable); /* X Vref */
 	mdx_usleep(10000);
-	pin_set(&gpio_sc, PORT_E, 6, 1); /* X ST */
+	pin_set(&gpio_sc, PORT_E, 6, enable); /* X ST */
 	mdx_usleep(10000);
 }
 
 static void
-pnp_yenable(void)
+pnp_yenable(int enable)
 {
 
-	pin_set(&gpio_sc, PORT_D, 13, 1); /* Vref */
+	pin_set(&gpio_sc, PORT_D, 13, enable); /* Vref */
 	mdx_usleep(10000);
-	pin_set(&gpio_sc, PORT_C, 0, 1); /* Y R ST */
-	pin_set(&gpio_sc, PORT_A, 8, 1); /* Y L ST */
+	pin_set(&gpio_sc, PORT_C, 0, enable); /* Y R ST */
+	pin_set(&gpio_sc, PORT_A, 8, enable); /* Y L ST */
+	mdx_usleep(10000);
+}
+
+static void
+pnp_zenable(int enable)
+{
+
+	pin_set(&gpio_sc, PORT_D, 15, enable); /* Vref */
+	mdx_usleep(10000);
+	pin_set(&gpio_sc, PORT_E, 4, enable); /* ST */
 	mdx_usleep(10000);
 }
 
@@ -159,6 +193,13 @@ pnp_yset_direction(int dir)
 
 	pin_set(&gpio_sc, PORT_C, 13, rdir); /* Y R FR */
 	pin_set(&gpio_sc, PORT_C, 9, dir); /* Y L FR */
+}
+
+static void
+pnp_zset_direction(int dir)
+{
+
+	pin_set(&gpio_sc, PORT_E, 3, dir); /* Z FR */
 }
 
 static void
@@ -182,6 +223,32 @@ ystep(int chanset, int speed)
 }
 
 static void
+zstep(int chanset, int speed)
+{
+	uint32_t freq;
+
+	freq = speed * 50000;
+
+	stm32f4_pwm_step(&pwm_z_sc, chanset, freq);
+}
+
+static int
+calc_speed(int i, int steps, int speed)
+{
+	int t;
+
+	t = i < (steps - i) ? i : (steps - i);
+	if (t < 1000) {
+		/* Gradually increase/decrease speed */
+		speed = (t * 100) / 1000;
+		if (speed < 15)
+			speed = 15;
+	}
+
+	return (speed);
+}
+
+static void
 pnp_worker_thread(void *arg)
 {
 	struct motor_state *motor;
@@ -189,7 +256,6 @@ pnp_worker_thread(void *arg)
 	uint32_t steps;
 	int speed;
 	int i;
-	int t;
 
 	motor = arg;
 	task = &motor->task;
@@ -204,16 +270,13 @@ pnp_worker_thread(void *arg)
 		//printf("%s: steps needed %d\n", __func__, steps);
 
 		for (i = 0; i < steps; i++) {
-			if (task->check_home && motor->is_at_home())
+			if (task->check_home && motor->is_at_home()) {
+				task->home_found = 1;
 				break;
-
-			t = i < (steps - i) ? i : (steps - i);
-			if (t < 1000) {
-				/* Gradually increase/decrease speed */
-				speed = (t * 100) / 1000;
-				if (speed < 15)
-					speed = 15;
 			}
+
+			if (task->speed_control)
+				speed = calc_speed(i, steps, speed);
 
 			motor->step(motor->chanset, speed);
 			mdx_sem_wait(&motor->step_sem);
@@ -247,6 +310,7 @@ mover(struct motor_state *motor, uint32_t new_pos)
 
 	task->steps = delta / PNP_STEP_NM;
 	task->speed = 100;
+	task->speed_control = 1;
 
 	motor->set_direction(task->dir);
 	mdx_sem_post(&motor->worker_sem);
@@ -286,6 +350,7 @@ pnp_move_home_motor(struct motor_state *motor)
 		motor->set_direction(1);
 		task->steps = PNP_STEPS_PER_MM * 10;
 		task->speed = 20;
+		task->speed_control = 0;
 		task->check_home = 0;
 		mdx_sem_post(&motor->worker_sem);
 		mdx_sem_wait(&task->task_compl_sem);
@@ -297,6 +362,7 @@ pnp_move_home_motor(struct motor_state *motor)
 	task->steps = PNP_MAX_Y_NM / PNP_STEP_NM;
 	task->check_home = 1;
 	task->speed = 25;
+	task->speed_control = 0;
 	motor->set_direction(0);
 	mdx_sem_post(&motor->worker_sem);
 	mdx_sem_wait(&task->task_compl_sem);
@@ -305,6 +371,7 @@ pnp_move_home_motor(struct motor_state *motor)
 	task->steps = 1000000 / PNP_STEP_NM;
 	task->check_home = 0;
 	task->speed = 15;
+	task->speed_control = 0;
 	motor->set_direction(0);
 	mdx_sem_post(&motor->worker_sem);
 	mdx_sem_wait(&task->task_compl_sem);
@@ -314,9 +381,62 @@ pnp_move_home_motor(struct motor_state *motor)
 }
 
 static void
+pnp_move_home_z_init(struct motor_state *motor)
+{
+
+}
+
+static int
+pnp_move_home_z(struct motor_state *motor)
+{
+	struct move_task *task;
+	int found;
+	int steps;
+	int dir;
+	int i;
+
+	task = &motor->task;
+
+	if (pnp_is_z_home()) {
+		pnp_move_home_z_init(motor);
+		return (0);
+	}
+
+	found = 0;
+	steps = 100;
+	dir = 1;
+
+	for (i = 0; i < 20; i++) {
+		printf("Making %d steps towards %d\n", steps, dir);
+		motor->set_direction(dir);
+		task->steps = steps;
+		task->check_home = 1;
+		task->speed = 15;
+		task->speed_control = 0;
+		task->home_found = 0;
+		mdx_sem_post(&motor->worker_sem);
+		mdx_sem_wait(&task->task_compl_sem);
+		if (task->home_found) {
+			found = 1;
+			break;
+		}
+		steps += 200;
+		dir = !dir;
+	}
+
+	if (found == 0)
+		return (-1);
+
+	printf("z home found\n");
+
+	return (0);
+}
+
+static void
 pnp_move_home(void)
 {
 
+	pnp_move_home_z(&pnp.motor_z);
 	pnp_move_home_motor(&pnp.motor_y);
 	pnp_move_home_motor(&pnp.motor_x);
 }
@@ -348,7 +468,7 @@ pnp_motor_initialize(struct motor_state *state, char *name)
 static int
 pnp_initialize(void)
 {
-	struct thread *td1, *td2;
+	struct thread *td1, *td2, *td3;
 
 	bzero(&pnp, sizeof(struct pnp_state));
 
@@ -366,8 +486,12 @@ pnp_initialize(void)
 		return (-1);
 	}
 
-	mdx_sched_add(td1);
-	mdx_sched_add(td2);
+	td3 = mdx_thread_create("Z Motor", 1 /* prio */, 500 /* quantum */,
+	    8192 /* stack */, pnp_worker_thread, &pnp.motor_z);
+	if (td2 == NULL) {
+		printf("%s: Failed to create Y mover thread\n", __func__);
+		return (-1);
+	}
 
 	pnp_motor_initialize(&pnp.motor_x, "X Motor");
 	pnp.motor_x.set_direction = pnp_xset_direction;
@@ -383,8 +507,20 @@ pnp_initialize(void)
 	pnp.motor_y.is_at_home = pnp_is_yl_home;
 	mdx_sem_init(&pnp.motor_y.task.task_compl_sem, 0);
 
-	pnp_xenable();
-	pnp_yenable();
+	pnp_motor_initialize(&pnp.motor_z, "Z Motor");
+	pnp.motor_z.set_direction = pnp_zset_direction;
+	pnp.motor_z.step = zstep;
+	pnp.motor_z.chanset = (1 << 0);
+	pnp.motor_z.is_at_home = pnp_is_z_home;
+	mdx_sem_init(&pnp.motor_z.task.task_compl_sem, 0);
+
+	pnp_xenable(1);
+	pnp_yenable(1);
+	pnp_zenable(1);
+
+	mdx_sched_add(td1);
+	mdx_sched_add(td2);
+	mdx_sched_add(td3);
 
 	return (0);
 }
@@ -413,11 +549,116 @@ pnp_test(void)
 
 #if 1
 	/* TODO */
-	pin_set(&gpio_sc, PORT_D, 15, 1); /* Vref */
 	pin_set(&gpio_sc, PORT_C,  6, 1); /* Vref */
 #endif
 
 	pnp_initialize();
+
+#if 0
+	int i;
+	mdx_sem_init(&zstep_sem, 0);
+
+	i = 0;
+	while (1) {
+		if (pnp_is_z_home())
+			break;
+		i += 1;
+	}
+	printf("ok %d\n", i);
+
+	/* Assuming we are not at home. */
+
+	if (pnp_is_z_home()) {
+		printf("already home\n");
+		return (0);
+	}
+
+	int found;
+	int dir, x;
+	int j;
+
+	found = 0;
+	x = 100;
+	dir = 1;
+	for (i = 0; i < 20; i++) {
+		printf("%d steps to %d\n", x, dir);
+		pnp_zset_direction(dir);
+		for (j = 0; j < x; j++) {
+			zstep((1 << 0), 20);
+			mdx_sem_wait(&zstep_sem);
+			if (pnp_is_z_home()) {
+				printf("home found\n");
+				found = 1;
+				break;
+			}
+		}
+		if (found)
+			break;
+		x += 200;
+		dir = !dir;
+	}
+
+	printf("end\n");
+	mdx_usleep(1000000);
+	pnp_zenable(0);
+
+	return (0);
+
+	/* Leave home counterclockwise. */
+	pnp_zset_direction(0);
+	for (i = 0; i < 1000; i++) {
+		zstep((1 << 0), 20);
+		mdx_sem_wait(&zstep_sem);
+	}
+
+	/* Now look for home. */
+	pnp_zset_direction(1);
+	while (1) {
+		zstep((1 << 0), 20);
+		mdx_sem_wait(&zstep_sem);
+		if (pnp_is_z_home()) {
+			printf("home found\n");
+			break;
+		}
+	}
+
+	/* Go into middle of the home. */
+	pnp_zset_direction(1);
+	for (i = 0; i < 50; i++) {
+		zstep((1 << 0), 20);
+		mdx_sem_wait(&zstep_sem);
+	}
+
+	/* Test */
+
+	j = 3800;
+
+	pnp_zset_direction(0);
+	for (i = 0; i < j; i++) {
+		zstep((1 << 0), 20);
+		mdx_sem_wait(&zstep_sem);
+	}
+
+	pnp_zset_direction(1);
+	for (i = 0; i < j*2; i++) {
+		zstep((1 << 0), 20);
+		mdx_sem_wait(&zstep_sem);
+	}
+
+	pnp_zset_direction(0);
+	for (i = 0; i < j; i++) {
+		zstep((1 << 0), 20);
+		mdx_sem_wait(&zstep_sem);
+	}
+
+	printf("z test compl\n");
+	mdx_usleep(1000000);
+
+	pnp_zenable(0);
+
+	return (0);
+#endif
+
 	pnp_move_home();
 	pnp_move_random();
 

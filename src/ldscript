@@ -27,8 +27,8 @@
 MEMORY
 {
 	flash (rx)   : ORIGIN = 0x08000000, LENGTH = 512K
-	sram1 (rwx)  : ORIGIN = 0x20000000, LENGTH = 32K
-	sram2 (rwx)  : ORIGIN = 0x20008000, LENGTH = 32K /* Malloc */
+	sram1 (rwx)  : ORIGIN = 0x20000000, LENGTH = 64K
+	sram2 (rwx)  : ORIGIN = 0x20010000, LENGTH = 64K /* Malloc */
 }
 
 ENTRY(__start)

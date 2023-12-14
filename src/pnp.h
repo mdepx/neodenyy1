@@ -29,6 +29,7 @@
 
 void pnp_pwm_x_intr(void *arg, int irq);
 void pnp_pwm_y_intr(void *arg, int irq);
+void pnp_pwm_z_intr(void *arg, int irq);
 
 int pnp_test(void);
 
