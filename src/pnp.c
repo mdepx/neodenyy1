@@ -54,6 +54,7 @@ struct move_task {
 	int check_home;
 	int dir;
 	int speed;
+	mdx_sem_t task_compl_sem;
 };
 
 struct motor_state {
@@ -211,7 +212,7 @@ pnp_worker_thread(void *arg)
 		steps = task->steps;
 		speed = task->speed;
 
-		printf("%s: steps needed %d\n", __func__, steps);
+		//printf("%s: steps needed %d\n", __func__, steps);
 
 		for (i = 0; i < steps; i++) {
 			if (task->check_home && motor->is_at_home())
@@ -225,6 +226,7 @@ pnp_worker_thread(void *arg)
 		}
 
 		printf("%s: new pos %d\n", motor->name, motor->pos);
+		mdx_sem_post(&task->task_compl_sem);
 	}
 }
 
@@ -249,7 +251,6 @@ mover(struct motor_state *motor, uint32_t new_pos)
 	task->speed = 50;
 
 	motor->set_direction(task->dir);
-
 	mdx_sem_post(&motor->worker_sem);
 }
 
@@ -265,7 +266,58 @@ pnp_move_xy(uint32_t new_pos_x, uint32_t new_pos_y)
 	mover(&pnp.motor_x, new_pos_x);
 	mover(&pnp.motor_y, new_pos_y);
 
+	mdx_sem_wait(&pnp.motor_x.task.task_compl_sem);
+	mdx_sem_wait(&pnp.motor_y.task.task_compl_sem);
+
 	return (0);
+}
+
+static void
+pnp_move_home_motor(struct motor_state *motor)
+{
+	struct move_task *task;
+
+	task = &motor->task;
+
+	/* Ensure we are not at home. */
+	if (motor->is_at_home()) {
+		/* Already at home, move back a bit. */
+		motor->set_direction(1);
+		task->steps = PNP_STEPS_PER_MM * 10;
+		task->speed = 20;
+		task->check_home = 0;
+		mdx_sem_post(&motor->worker_sem);
+		mdx_sem_wait(&task->task_compl_sem);
+		if (motor->is_at_home())
+			panic("still at home");
+	}
+
+	/* Try to reach home. */
+	task->steps = PNP_MAX_Y_NM / PNP_STEP_NM;
+	task->check_home = 1;
+	task->speed = 25;
+	motor->set_direction(0);
+	mdx_sem_post(&motor->worker_sem);
+	mdx_sem_wait(&task->task_compl_sem);
+
+	/* Now go into home for 1 mm. */
+	task->steps = 1000000 / PNP_STEP_NM;
+	task->check_home = 0;
+	task->speed = 15;
+	motor->set_direction(0);
+	mdx_sem_post(&motor->worker_sem);
+	mdx_sem_wait(&task->task_compl_sem);
+
+	motor->pos = 0;
+	printf("%s: %s home reached\n", motor->name, __func__);
+}
+
+static void
+pnp_move_home(void)
+{
+
+	pnp_move_home_motor(&pnp.motor_y);
+	pnp_move_home_motor(&pnp.motor_x);
 }
 
 static int
@@ -538,24 +590,19 @@ pnp_initialize(void)
 	pnp.motor_x.step = xstep;
 	pnp.motor_x.chanset = (1 << 0);
 	pnp.motor_x.is_at_home = pnp_is_x_home;
+	mdx_sem_init(&pnp.motor_x.task.task_compl_sem, 0);
 
 	pnp_motor_initialize(&pnp.motor_y, "Y Motor");
 	pnp.motor_y.set_direction = pnp_yset_direction;
 	pnp.motor_y.step = ystep;
 	pnp.motor_y.chanset = ((1 << 0) | (1 << 1));
-	pnp.motor_x.is_at_home = pnp_is_yl_home;
+	pnp.motor_y.is_at_home = pnp_is_yl_home;
+	mdx_sem_init(&pnp.motor_y.task.task_compl_sem, 0);
 
 	pnp_xenable();
 	pnp_yenable();
 
 	return (0);
-}
-
-static void
-pnp_move_home(void)
-{
-
-	//pnp_move_xy(100 * 1000000, 100 * 1000000);
 }
 
 static void
@@ -584,10 +631,11 @@ pnp_test(void)
 
 	pnp_initialize();
 	pnp_move_home();
-	pnp_test_new();
 
 	while (1)
 		mdx_usleep(100000);
+
+	pnp_test_new();
 
 	return (0);
 
