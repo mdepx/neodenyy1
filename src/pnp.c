@@ -380,32 +380,33 @@ pnp_move_home_motor(struct motor_state *motor)
 	printf("%s home reached\n", motor->name);
 }
 
-static void
-pnp_move_home_z_init(struct motor_state *motor)
-{
-
-}
-
 static int
 pnp_move_home_z(struct motor_state *motor)
 {
 	struct move_task *task;
-	int found;
 	int steps;
 	int dir;
 	int i;
 
 	task = &motor->task;
 
+	/* First leave home. */
 	if (pnp_is_z_home()) {
-		pnp_move_home_z_init(motor);
-		return (0);
+		task->steps = 200;
+		task->check_home = 0;
+		task->speed = 15;
+		task->speed_control = 0;
+		task->home_found = 0;
+		motor->set_direction(1);
+		mdx_sem_post(&motor->worker_sem);
+		mdx_sem_wait(&task->task_compl_sem);
+		/* TODO: ensure we left it. */
 	}
 
-	found = 0;
 	steps = 100;
 	dir = 1;
 
+	/* Now find home once again. */
 	for (i = 0; i < 20; i++) {
 		printf("Making %d steps towards %d\n", steps, dir);
 		motor->set_direction(dir);
@@ -417,15 +418,22 @@ pnp_move_home_z(struct motor_state *motor)
 		mdx_sem_post(&motor->worker_sem);
 		mdx_sem_wait(&task->task_compl_sem);
 		if (task->home_found) {
-			found = 1;
-			break;
+			printf("Home not found\n");
+			return (-1);
 		}
 		steps += 200;
 		dir = !dir;
 	}
 
-	if (found == 0)
-		return (-1);
+	/* Now make 50 steps into home. */
+	task->steps = 50;
+	task->check_home = 0;
+	task->speed = 15;
+	task->speed_control = 0;
+	task->home_found = 0;
+	motor->set_direction(dir);
+	mdx_sem_post(&motor->worker_sem);
+	mdx_sem_wait(&task->task_compl_sem);
 
 	printf("z home found\n");
 
@@ -553,112 +561,6 @@ pnp_test(void)
 #endif
 
 	pnp_initialize();
-
-#if 0
-	int i;
-	mdx_sem_init(&zstep_sem, 0);
-
-	i = 0;
-	while (1) {
-		if (pnp_is_z_home())
-			break;
-		i += 1;
-	}
-	printf("ok %d\n", i);
-
-	/* Assuming we are not at home. */
-
-	if (pnp_is_z_home()) {
-		printf("already home\n");
-		return (0);
-	}
-
-	int found;
-	int dir, x;
-	int j;
-
-	found = 0;
-	x = 100;
-	dir = 1;
-	for (i = 0; i < 20; i++) {
-		printf("%d steps to %d\n", x, dir);
-		pnp_zset_direction(dir);
-		for (j = 0; j < x; j++) {
-			zstep((1 << 0), 20);
-			mdx_sem_wait(&zstep_sem);
-			if (pnp_is_z_home()) {
-				printf("home found\n");
-				found = 1;
-				break;
-			}
-		}
-		if (found)
-			break;
-		x += 200;
-		dir = !dir;
-	}
-
-	printf("end\n");
-	mdx_usleep(1000000);
-	pnp_zenable(0);
-
-	return (0);
-
-	/* Leave home counterclockwise. */
-	pnp_zset_direction(0);
-	for (i = 0; i < 1000; i++) {
-		zstep((1 << 0), 20);
-		mdx_sem_wait(&zstep_sem);
-	}
-
-	/* Now look for home. */
-	pnp_zset_direction(1);
-	while (1) {
-		zstep((1 << 0), 20);
-		mdx_sem_wait(&zstep_sem);
-		if (pnp_is_z_home()) {
-			printf("home found\n");
-			break;
-		}
-	}
-
-	/* Go into middle of the home. */
-	pnp_zset_direction(1);
-	for (i = 0; i < 50; i++) {
-		zstep((1 << 0), 20);
-		mdx_sem_wait(&zstep_sem);
-	}
-
-	/* Test */
-
-	j = 3800;
-
-	pnp_zset_direction(0);
-	for (i = 0; i < j; i++) {
-		zstep((1 << 0), 20);
-		mdx_sem_wait(&zstep_sem);
-	}
-
-	pnp_zset_direction(1);
-	for (i = 0; i < j*2; i++) {
-		zstep((1 << 0), 20);
-		mdx_sem_wait(&zstep_sem);
-	}
-
-	pnp_zset_direction(0);
-	for (i = 0; i < j; i++) {
-		zstep((1 << 0), 20);
-		mdx_sem_wait(&zstep_sem);
-	}
-
-	printf("z test compl\n");
-	mdx_usleep(1000000);
-
-	pnp_zenable(0);
-
-	return (0);
-#endif
-
 	pnp_move_home();
 	pnp_move_random();
 
