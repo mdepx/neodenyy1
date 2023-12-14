@@ -310,7 +310,7 @@ pnp_move_home_motor(struct motor_state *motor)
 	mdx_sem_wait(&task->task_compl_sem);
 
 	motor->pos = 0;
-	printf("%s: %s home reached\n", motor->name, __func__);
+	printf("%s home reached\n", motor->name);
 }
 
 static void
