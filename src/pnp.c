@@ -201,6 +201,7 @@ pnp_worker_thread(void *arg)
 	uint32_t steps;
 	int speed;
 	int i;
+	int t;
 
 	motor = arg;
 	task = &motor->task;
@@ -217,6 +218,15 @@ pnp_worker_thread(void *arg)
 		for (i = 0; i < steps; i++) {
 			if (task->check_home && motor->is_at_home())
 				break;
+
+			t = i < (steps - i) ? i : (steps - i);
+			if (t < 1000) {
+				/* Gradually increase/decrease speed */
+				speed = (t * 100) / 1000;
+				if (speed < 15)
+					speed = 15;
+			}
+
 			motor->step(motor->chanset, speed);
 			mdx_sem_wait(&motor->step_sem);
 			if (task->dir == 1)
@@ -248,7 +258,7 @@ mover(struct motor_state *motor, uint32_t new_pos)
 	}
 
 	task->steps = delta / PNP_STEP_NM;
-	task->speed = 50;
+	task->speed = 100;
 
 	motor->set_direction(task->dir);
 	mdx_sem_post(&motor->worker_sem);
