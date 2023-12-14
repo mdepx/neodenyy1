@@ -359,7 +359,7 @@ pnp_move_z(uint32_t new_pos)
 	}
 
 	task->steps = delta / PNP_STEP_NM;
-	task->speed = 50;
+	task->speed = 75;
 
 	motor->set_direction(task->dir);
 	mdx_sem_post(&motor->worker_sem);
@@ -394,7 +394,7 @@ pnp_move_home_motor(struct motor_state *motor)
 	/* Try to reach home. */
 	task->steps = PNP_MAX_Y_NM / PNP_STEP_NM;
 	task->check_home = 1;
-	task->speed = 25;
+	task->speed = 30;
 	task->speed_control = 0;
 	motor->set_direction(0);
 	mdx_sem_post(&motor->worker_sem);
@@ -593,9 +593,7 @@ pnp_move_random(void)
 		printf("%d: moving to %u %u\n", i, new_x, new_y);
 		pnp_move_xy(new_x, new_y);
 		pnp_move_z(15000000);
-		mdx_usleep(25000);
 		pnp_move_z(0);
-		mdx_usleep(25000);
 	}
 
 	pnp_move_xy(0, 0);
