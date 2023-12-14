@@ -47,6 +47,7 @@ struct stm32f4_flash_softc flash_sc;
 struct stm32f4_pwr_softc pwr_sc;
 struct stm32f4_rcc_softc rcc_sc;
 struct stm32f4_timer_softc timer_sc;
+struct stm32f4_rng_softc rng_sc;
 
 struct arm_nvic_softc nvic_sc;
 struct mdx_device dev_nvic = { .sc = &nvic_sc };
@@ -100,23 +101,25 @@ board_init(void)
 	pconf.pllq = 7;
 	pconf.pllp = 0;
 	pconf.external = 1;
-	pconf.rcc_cfgr = (CFGR_PPRE2_2 | CFGR_PPRE1_4);
+	pconf.rcc_cfgr = (CFGR_PPRE2_4 | CFGR_PPRE1_4);
 	stm32f4_rcc_pll_configure(&rcc_sc, &pconf);
 
 	stm32f4_flash_setup(&flash_sc);
 	reg = (GPIOAEN | GPIOBEN | GPIOCEN | GPIODEN | GPIOEEN);
-	stm32f4_rcc_setup(&rcc_sc, reg, 0, 0, (TIM14EN | TIM4EN),
+	stm32f4_rcc_setup(&rcc_sc, reg, RNGEN, 0, (TIM14EN | TIM4EN),
 	    (TIM1EN | TIM8EN | TIM10EN | USART1EN));
 	stm32f4_gpio_init(&gpio_sc, GPIO_BASE);
 	gpio_config(&gpio_sc);
 
-	stm32f4_usart_init(&usart_sc, USART1_BASE, 84000000, 115200);
+	stm32f4_usart_init(&usart_sc, USART1_BASE, 42000000, 115200);
 	mdx_console_register(uart_putchar, (void *)&usart_sc);
+
+	stm32f4_rng_init(&rng_sc, RNG_BASE);
 
 	printf("Mdepx started\n");
 
-	/* (168 / PPRE2_2) * 2 = 168MHz */
-	stm32f4_timer_init(&timer_sc, TIM8_BASE, 168000000);
+	/* All timers: (168 / PPRE2_4) * 2 = 84MHz */
+	stm32f4_timer_init(&timer_sc, TIM8_BASE, 84000000);
 	arm_nvic_init(&dev_nvic, NVIC_BASE);
 
 	/* Timer / TIM8 */
@@ -124,12 +127,12 @@ board_init(void)
 	mdx_intc_enable(&dev_nvic, 46);
 
 	/* X Motor / TIM10 CH1 */
-	stm32f4_pwm_init(&pwm_x_sc, TIM10_BASE, 168000000);
+	stm32f4_pwm_init(&pwm_x_sc, TIM10_BASE, 84000000);
 	mdx_intc_setup(&dev_nvic, 25, pnp_pwm_x_intr, &pwm_x_sc);
 	mdx_intc_enable(&dev_nvic, 25);
 
 	/* Y L/R Motors / TIM4 */
-	stm32f4_pwm_init(&pwm_y_sc, TIM4_BASE, 168000000);
+	stm32f4_pwm_init(&pwm_y_sc, TIM4_BASE, 84000000);
 	mdx_intc_setup(&dev_nvic, 30, pnp_pwm_y_intr, &pwm_y_sc);
 	mdx_intc_enable(&dev_nvic, 30);
 }

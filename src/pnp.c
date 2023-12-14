@@ -40,9 +40,10 @@
 extern struct stm32f4_gpio_softc gpio_sc;
 extern struct stm32f4_pwm_softc pwm_x_sc;
 extern struct stm32f4_pwm_softc pwm_y_sc;
+extern struct stm32f4_rng_softc rng_sc;
 
-#define	PNP_MAX_X_NM	368000000	/* nanometers */
-#define	PNP_MAX_Y_NM	368000000	/* nanometers */
+#define	PNP_MAX_X_NM	300000000	/* nanometers */
+#define	PNP_MAX_Y_NM	300000000	/* nanometers */
 #define	PNP_STEP_NM	6250		/* Length of a step, nanometers */
 #define	PNP_STEPS_PER_MM	160
 
@@ -144,7 +145,7 @@ xstep(int speed)
 {
 	uint32_t freq;
 
-	freq = speed * 100000;
+	freq = speed * 50000;
 
 	stm32f4_pwm_step(&pwm_x_sc, (1 << 0), freq);
 }
@@ -158,7 +159,7 @@ ystep(int chanset, int speed)
 {
 	uint32_t freq;
 
-	freq = speed * 150000;
+	freq = speed * 50000;
 	//chanset = (1 << 0) | (1 << 1);
 
 	stm32f4_pwm_step(&pwm_y_sc, chanset, freq);
@@ -181,7 +182,7 @@ pnp_xhome(void)
 		}
 		if (pnp_is_x_home())
 			break;
-		xstep(75);
+		xstep(25);
 		mdx_sem_wait(&xsem);
 	}
 
@@ -200,7 +201,7 @@ pnp_yhome(void)
 	int speed;
 	int i;
 
-	speed = 75;
+	speed = 25;
 
 	mdx_sem_init(&ysem, 0);
 
@@ -239,7 +240,7 @@ pnp_yhome(void)
 			 * But we need to move a mm or so into home.
 			 */
 			count = PNP_STEPS_PER_MM;
-			speed = 40;
+			speed = 15;
 		}
 
 		if (count > 0)
@@ -277,9 +278,8 @@ pnp_home(void)
 }
 
 static void
-pnp_move(int abs_x_mm, int abs_y_mm)
+pnp_move(uint32_t new_pos_x, uint32_t new_pos_y)
 {
-	uint32_t new_pos_x, new_pos_y;
 	uint32_t xsteps, ysteps;
 	uint32_t xdelta, ydelta;
 	uint32_t t;
@@ -287,9 +287,6 @@ pnp_move(int abs_x_mm, int abs_y_mm)
 	int xspeed, yspeed;
 	int xdir, ydir;
 	int xstop, ystop;
-
-	new_pos_x = abs_x_mm * 1000000; /* nanometers */
-	new_pos_y = abs_y_mm * 1000000; /* nanometers */
 
 	xcount = ycount = 0;
 	xstop = ystop = 0;
@@ -384,10 +381,28 @@ pnp_move(int abs_x_mm, int abs_y_mm)
 	//printf("count x y %d %d\n", xcount, ycount);
 }
 
+static uint32_t
+get_random(void)
+{
+	uint32_t data;
+	int error;
+
+	do {
+		error = stm32f4_rng_data(&rng_sc, &data);
+		if (error == 0)
+			break;
+	} while (1);
+
+	return (data);
+}
+
 int
 pnp_test(void)
 {
+	uint32_t new_x;
+	uint32_t new_y;
 	int error;
+	int i;
 
 	pnp.pos_x = -1;
 	pnp.pos_y = -1;
@@ -405,32 +420,13 @@ pnp_test(void)
 	if (error)
 		return (error);
 
-	pnp_move(100, 100);
-	mdx_usleep(20000);
-
-	pnp_move(50, 20);
-	mdx_usleep(20000);
-
-	pnp_move(150, 150);
-	mdx_usleep(20000);
-
-	pnp_move(100, 200);
-	mdx_usleep(20000);
-
-	pnp_move(0, 0);
-	mdx_usleep(20000);
-
-	pnp_move(360, 10);
-	mdx_usleep(20000);
-
-	pnp_move(220, 90);
-	mdx_usleep(20000);
-
-	pnp_move(300, 180);
-	mdx_usleep(20000);
-
-	pnp_move(0, 0);
-	mdx_usleep(20000);
+	for (i = 0; i < 10; i++) {
+		new_x = get_random() % PNP_MAX_X_NM;
+		new_y = get_random() % PNP_MAX_Y_NM;
+		printf("moving to %u %u\n", new_x, new_y);
+		pnp_move(new_x, new_y);
+		mdx_usleep(100000);
+	}
 
 	return (0);
 }
