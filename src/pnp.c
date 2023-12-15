@@ -227,7 +227,7 @@ zstep(int chanset, int speed)
 {
 	uint32_t freq;
 
-	freq = speed * 75000;
+	freq = speed * 150000;
 
 	stm32f4_pwm_step(&pwm_z_sc, chanset, freq);
 }
