@@ -61,10 +61,12 @@ static const struct gpio_pin neodenyy1_pins[] = {
 	{ PORT_C, 6, MODE_INP, 0, FLOAT }, /* SensorL head */
 	{ PORT_C, 7, MODE_INP, 0, FLOAT }, /* SensorL */
 
+
 	/* TODO: Y Motor R */
 	{ PORT_C,  0, MODE_OUT, 0, PULLDOWN }, /* ST */
 	{ PORT_C, 13, MODE_OUT, 0, PULLDOWN }, /* FR */
 	{ PORT_B,  7, MODE_ALT, 2, PULLDOWN }, /* STP TIM4_CH2 */
+	{ PORT_D, 15, MODE_OUT, 0, PULLDOWN }, /* Y Motor VREF */
 
 	/* TODO: Y Motor L */
 	{ PORT_A, 8, MODE_OUT, 0, PULLDOWN }, /* ST */
@@ -77,19 +79,17 @@ static const struct gpio_pin neodenyy1_pins[] = {
 	{ PORT_B,  8, MODE_ALT, 3, PULLDOWN }, /* STP TIM10_CH1 */
 	{ PORT_D, 14, MODE_OUT, 0, PULLDOWN }, /* X Motor VREF */
 
-	{ PORT_D, 13, MODE_OUT, 0, PULLDOWN }, /* Motor VREF */
-	{ PORT_D, 15, MODE_OUT, 0, PULLDOWN }, /* Motor VREF */
-	{ PORT_C, 6, MODE_OUT, 0, PULLDOWN }, /* Motor VREF */
-
 	/* Z Motor */
 	{ PORT_E, 4, MODE_OUT, 0, PULLDOWN }, /* ST */
 	{ PORT_E, 3, MODE_OUT, 0, PULLDOWN }, /* FR */
 	{ PORT_A, 7, MODE_ALT, 9, PULLDOWN }, /* STP TIM14_CH1 */
+	{ PORT_D, 13, MODE_OUT, 0, PULLDOWN }, /* Z Motor VREF */
 
 	/* Head 1 */
 	{ PORT_D, 3, MODE_OUT, 0, PULLDOWN }, /* ST */
 	{ PORT_D, 1, MODE_OUT, 0, PULLDOWN }, /* FR */
 	{ PORT_A, 6, MODE_ALT, 9, PULLDOWN }, /* STP TIM13_CH1 */
+	{ PORT_D, 12, MODE_OUT, 0, PULLDOWN }, /* Head 1,2 VREF */
 
 	/* Head 2 */
 	{ PORT_A, 15, MODE_OUT, 0, PULLDOWN }, /* ST */

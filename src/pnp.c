@@ -180,7 +180,7 @@ static void
 pnp_yenable(int enable)
 {
 
-	pin_set(&gpio_sc, PORT_D, 13, enable); /* Vref */
+	pin_set(&gpio_sc, PORT_D, 15, enable); /* Y Vref */
 	mdx_usleep(10000);
 	pin_set(&gpio_sc, PORT_C, 0, enable); /* Y R ST */
 	pin_set(&gpio_sc, PORT_A, 8, enable); /* Y L ST */
@@ -191,7 +191,7 @@ static void
 pnp_zenable(int enable)
 {
 
-	pin_set(&gpio_sc, PORT_D, 15, enable); /* Vref */
+	pin_set(&gpio_sc, PORT_D, 13, enable); /* Z Vref */
 	mdx_usleep(10000);
 	pin_set(&gpio_sc, PORT_E, 4, enable); /* ST */
 	mdx_usleep(10000);
@@ -201,7 +201,7 @@ static void
 pnp_henable(int enable)
 {
 
-	pin_set(&gpio_sc, PORT_C, 6, enable); /* Vref */
+	pin_set(&gpio_sc, PORT_D, 12, enable); /* H Vref */
 	mdx_usleep(10000);
 	pin_set(&gpio_sc, PORT_D, 3, enable); /* H1 ST */
 	pin_set(&gpio_sc, PORT_A, 15, enable); /* H2 ST */
@@ -282,7 +282,7 @@ h1step(int chanset, int speed)
 {
 	uint32_t freq;
 
-	freq = speed * 15000;
+	freq = speed * 50000;
 
 	stm32f4_pwm_step(&pwm_h1_sc, chanset, freq);
 }
@@ -292,7 +292,7 @@ h2step(int chanset, int speed)
 {
 	uint32_t freq;
 
-	freq = speed * 15000;
+	freq = speed * 50000;
 
 	stm32f4_pwm_step(&pwm_h2_sc, chanset, freq);
 }
@@ -327,12 +327,12 @@ pnp_worker_thread(void *arg)
 
 	while (1) {
 		mdx_sem_wait(&motor->worker_sem);
-		//printf("%s: TR\n", __func__);
+		printf("%s: TR\n", __func__);
 
 		steps = task->steps;
 		speed = task->speed;
 
-		//printf("%s: steps needed %d\n", __func__, steps);
+		printf("%s: steps needed %d\n", __func__, steps);
 
 		for (i = 0; i < steps; i++) {
 			if (task->check_home && motor->is_at_home()) {
@@ -351,7 +351,7 @@ pnp_worker_thread(void *arg)
 				motor->pos -= PNP_STEP_NM;
 		}
 
-		//printf("%s: new pos %d\n", motor->name, motor->pos);
+		printf("%s: new pos %d\n", motor->name, motor->pos);
 		mdx_sem_post(&task->task_compl_sem);
 	}
 }
@@ -433,6 +433,37 @@ pnp_move_z(int new_pos)
 	dprintf("%s: new z %d\n", __func__, motor->pos);
 
 	return (0);
+}
+
+static void
+pnp_move_head(int head, int new_pos)
+{
+	struct motor_state *motor;
+	struct move_task *task;
+	int delta;
+
+	motor = head == 1 ? &pnp.motor_h1 : &pnp.motor_h2;
+	task = &motor->task;
+	task->check_home = 0;
+	task->speed_control = 0;
+
+	task->new_pos = new_pos;
+	if (task->new_pos > motor->pos) {
+		task->dir = 1;
+		delta = task->new_pos - motor->pos;
+	} else {
+		task->dir = 0;
+		delta = motor->pos - task->new_pos;
+	}
+
+	task->steps = abs(delta) / PNP_STEP_NM;
+	task->speed = 50;
+
+	motor->set_direction(task->dir);
+	mdx_sem_post(&motor->worker_sem);
+	mdx_sem_wait(&motor->task.task_compl_sem);
+
+	dprintf("%s: head%d new_pos %d\n", __func__, head, motor->pos);
 }
 
 static void
@@ -693,6 +724,22 @@ pnp_deinitialize(void)
 }
 
 static void
+pnp_test_heads(void)
+{
+
+	printf("starting moving head\n");
+	while (1) {
+		pnp_move_head(1, 20000000);
+		pnp_move_head(2, 20000000);
+		mdx_usleep(500000);
+		pnp_move_head(1, -20000000);
+		pnp_move_head(2, -20000000);
+		mdx_usleep(500000);
+	}
+	printf("head moving done\n");
+}
+
+static void
 pnp_move_random(void)
 {
 	uint32_t new_x;
@@ -718,9 +765,17 @@ pnp_test(void)
 	int error;
 
 	pnp_initialize();
+
+	mdx_usleep(500000);
+
+	pnp_test_heads();
+	while (1)
+		mdx_usleep(100000);
+
 	error = pnp_move_home();
 	if (error)
 		return (error);
+
 	pnp_move_random();
 	pnp_deinitialize();
 
