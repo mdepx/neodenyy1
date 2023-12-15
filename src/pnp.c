@@ -51,6 +51,8 @@ extern struct stm32f4_gpio_softc gpio_sc;
 extern struct stm32f4_pwm_softc pwm_x_sc;
 extern struct stm32f4_pwm_softc pwm_y_sc;
 extern struct stm32f4_pwm_softc pwm_z_sc;
+extern struct stm32f4_pwm_softc pwm_h1_sc;
+extern struct stm32f4_pwm_softc pwm_h2_sc;
 extern struct stm32f4_rng_softc rng_sc;
 
 #define	PNP_MAX_X_NM	300000000	/* nanometers */
@@ -196,10 +198,35 @@ pnp_zenable(int enable)
 }
 
 static void
+pnp_henable(int enable)
+{
+
+	pin_set(&gpio_sc, PORT_C, 6, enable); /* Vref */
+	mdx_usleep(10000);
+	pin_set(&gpio_sc, PORT_D, 3, enable); /* H1 ST */
+	pin_set(&gpio_sc, PORT_A, 15, enable); /* H2 ST */
+	mdx_usleep(10000);
+}
+
+static void
 pnp_xset_direction(int dir)
 {
 
 	pin_set(&gpio_sc, PORT_E, 5, dir); /* X FR */
+}
+
+static void
+pnp_h1set_direction(int dir)
+{
+
+	pin_set(&gpio_sc, PORT_D, 1, dir); /* H1 FR */
+}
+
+static void
+pnp_h2set_direction(int dir)
+{
+
+	pin_set(&gpio_sc, PORT_D, 0, dir); /* H2 FR */
 }
 
 static void
@@ -248,6 +275,26 @@ zstep(int chanset, int speed)
 	freq = speed * 150000;
 
 	stm32f4_pwm_step(&pwm_z_sc, chanset, freq);
+}
+
+static void
+h1step(int chanset, int speed)
+{
+	uint32_t freq;
+
+	freq = speed * 15000;
+
+	stm32f4_pwm_step(&pwm_h1_sc, chanset, freq);
+}
+
+static void
+h2step(int chanset, int speed)
+{
+	uint32_t freq;
+
+	freq = speed * 15000;
+
+	stm32f4_pwm_step(&pwm_h2_sc, chanset, freq);
 }
 
 static int
@@ -539,32 +586,28 @@ pnp_motor_initialize(struct motor_state *state, char *name)
 }
 
 static int
-pnp_initialize(void)
+pnp_thread_create(char *name, void *arg)
 {
-	struct thread *td1, *td2, *td3;
+	struct thread *td;
 
-	bzero(&pnp, sizeof(struct pnp_state));
-
-	td1 = mdx_thread_create("X Motor", 1 /* prio */, 500 /* quantum */,
-	    8192 /* stack */, pnp_worker_thread, &pnp.motor_x);
-	if (td1 == NULL) {
+	td = mdx_thread_create(name, 1 /* prio */, 500 /* quantum */,
+	    8192 /* stack */, pnp_worker_thread, arg);
+	if (td == NULL) {
 		printf("%s: Failed to create X mover thread\n", __func__);
 		return (-1);
 	}
 
-	td2 = mdx_thread_create("Y Motor", 1 /* prio */, 500 /* quantum */,
-	    8192 /* stack */, pnp_worker_thread, &pnp.motor_y);
-	if (td2 == NULL) {
-		printf("%s: Failed to create Y mover thread\n", __func__);
-		return (-1);
-	}
+	mdx_sched_add(td);
 
-	td3 = mdx_thread_create("Z Motor", 1 /* prio */, 500 /* quantum */,
-	    8192 /* stack */, pnp_worker_thread, &pnp.motor_z);
-	if (td2 == NULL) {
-		printf("%s: Failed to create Y mover thread\n", __func__);
-		return (-1);
-	}
+	return (0);
+}
+
+static int
+pnp_initialize(void)
+{
+	int error;
+
+	bzero(&pnp, sizeof(struct pnp_state));
 
 	pnp_motor_initialize(&pnp.motor_x, "X Motor");
 	pnp.motor_x.set_direction = pnp_xset_direction;
@@ -587,13 +630,54 @@ pnp_initialize(void)
 	pnp.motor_z.is_at_home = pnp_is_z_home;
 	mdx_sem_init(&pnp.motor_z.task.task_compl_sem, 0);
 
+	pnp_motor_initialize(&pnp.motor_h1, "H1 Motor");
+	pnp.motor_z.set_direction = pnp_h1set_direction;
+	pnp.motor_z.step = h1step;
+	pnp.motor_z.chanset = (1 << 0);
+	pnp.motor_z.is_at_home = NULL;
+	mdx_sem_init(&pnp.motor_h1.task.task_compl_sem, 0);
+
+	pnp_motor_initialize(&pnp.motor_h2, "H2 Motor");
+	pnp.motor_z.set_direction = pnp_h2set_direction;
+	pnp.motor_z.step = h2step;
+	pnp.motor_z.chanset = (1 << 0);
+	pnp.motor_z.is_at_home = NULL;
+	mdx_sem_init(&pnp.motor_h2.task.task_compl_sem, 0);
+
+	error = pnp_thread_create("X Motor", &pnp.motor_x);
+	if (error) {
+		printf("%s: Failed to create X mover thread\n", __func__);
+		return (-1);
+	}
+
+	error = pnp_thread_create("Y Motor", &pnp.motor_y);
+	if (error) {
+		printf("%s: Failed to create Y mover thread\n", __func__);
+		return (-1);
+	}
+
+	error = pnp_thread_create("Z Motor", &pnp.motor_z);
+	if (error) {
+		printf("%s: Failed to create Z mover thread\n", __func__);
+		return (-1);
+	}
+
+	error = pnp_thread_create("H1 Motor", &pnp.motor_h1);
+	if (error) {
+		printf("%s: Failed to create H1 mover thread\n", __func__);
+		return (-1);
+	}
+
+	error = pnp_thread_create("H2 Motor", &pnp.motor_h2);
+	if (error) {
+		printf("%s: Failed to create H2 mover thread\n", __func__);
+		return (-1);
+	}
+
 	pnp_xenable(1);
 	pnp_yenable(1);
 	pnp_zenable(1);
-
-	mdx_sched_add(td1);
-	mdx_sched_add(td2);
-	mdx_sched_add(td3);
+	pnp_henable(1);
 
 	return (0);
 }
@@ -605,6 +689,7 @@ pnp_deinitialize(void)
 	pnp_xenable(0);
 	pnp_yenable(0);
 	pnp_zenable(0);
+	pnp_henable(0);
 }
 
 static void
@@ -631,11 +716,6 @@ int
 pnp_test(void)
 {
 	int error;
-
-#if 1
-	/* TODO: heads? */
-	pin_set(&gpio_sc, PORT_C,  6, 1); /* Vref */
-#endif
 
 	pnp_initialize();
 	error = pnp_move_home();
