@@ -581,6 +581,15 @@ pnp_initialize(void)
 }
 
 static void
+pnp_deinitialize(void)
+{
+
+	pnp_xenable(0);
+	pnp_yenable(0);
+	pnp_zenable(0);
+}
+
+static void
 pnp_move_random(void)
 {
 	uint32_t new_x;
@@ -606,7 +615,7 @@ pnp_test(void)
 	int error;
 
 #if 1
-	/* TODO */
+	/* TODO: heads? */
 	pin_set(&gpio_sc, PORT_C,  6, 1); /* Vref */
 #endif
 
@@ -615,6 +624,7 @@ pnp_test(void)
 	if (error)
 		return (error);
 	pnp_move_random();
+	pnp_deinitialize();
 
 	return (0);
 }
