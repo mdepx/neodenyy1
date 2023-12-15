@@ -227,7 +227,7 @@ zstep(int chanset, int speed)
 {
 	uint32_t freq;
 
-	freq = speed * 60000;
+	freq = speed * 75000;
 
 	stm32f4_pwm_step(&pwm_z_sc, chanset, freq);
 }
@@ -347,7 +347,7 @@ pnp_move_z(int new_pos)
 	motor = &pnp.motor_z;
 	task = &motor->task;
 	task->check_home = 0;
-	task->speed_control = 0;
+	task->speed_control = 1;
 
 	task->new_pos = new_pos;
 	if (task->new_pos > motor->pos) {
@@ -592,8 +592,8 @@ pnp_move_random(void)
 		new_y = get_random() % PNP_MAX_Y_NM;
 		printf("%d: moving to %u %u\n", i, new_x, new_y);
 		pnp_move_xy(new_x, new_y);
-		pnp_move_z(-15000000);
-		pnp_move_z(15000000);
+		pnp_move_z(-20000000);
+		pnp_move_z(20000000);
 		pnp_move_z(0);
 	}
 
