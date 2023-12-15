@@ -115,18 +115,20 @@ board_init(void)
 	stm32f4_usart_init(&usart_sc, USART1_BASE, 42000000, 115200);
 	mdx_console_register(uart_putchar, (void *)&usart_sc);
 
+	printf("MDEPX is starting up\n");
+
 	stm32f4_rng_init(&rng_sc, RNG_BASE);
+	arm_nvic_init(&dev_nvic, NVIC_BASE);
 
 	malloc_init();
 	malloc_add_region((void *)0x20008000, 64 * 1024);
 
-	printf("Mdepx started\n");
+	/*
+	 * All timers: (168MHz / PPRE2_4) * 2 = 84MHz.
+	 */
 
-	/* All timers: (168 / PPRE2_4) * 2 = 84MHz */
+	/* System timer / TIM8 */
 	stm32f4_timer_init(&timer_sc, TIM8_BASE, 84000000);
-	arm_nvic_init(&dev_nvic, NVIC_BASE);
-
-	/* Timer / TIM8 */
 	mdx_intc_setup(&dev_nvic, 46, stm32f4_timer_intr, &timer_sc);
 	mdx_intc_enable(&dev_nvic, 46);
 
