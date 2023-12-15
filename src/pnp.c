@@ -88,6 +88,8 @@ struct pnp_state {
 	struct motor_state motor_x;
 	struct motor_state motor_y;
 	struct motor_state motor_z;
+	struct motor_state motor_h1;
+	struct motor_state motor_h2;
 };
 
 static struct pnp_state pnp;
@@ -96,10 +98,7 @@ void
 pnp_pwm_y_intr(void *arg, int irq)
 {
 
-	/* Step completed. */
-
 	stm32f4_pwm_intr(arg, irq);
-
 	mdx_sem_post(&pnp.motor_y.step_sem);
 }
 
@@ -107,10 +106,7 @@ void
 pnp_pwm_x_intr(void *arg, int irq)
 {
 
-	/* Step completed. */
-
 	stm32f4_pwm_intr(arg, irq);
-
 	mdx_sem_post(&pnp.motor_x.step_sem);
 }
 
@@ -118,11 +114,24 @@ void
 pnp_pwm_z_intr(void *arg, int irq)
 {
 
-	/* Step completed. */
+	stm32f4_pwm_intr(arg, irq);
+	mdx_sem_post(&pnp.motor_z.step_sem);
+}
+
+void
+pnp_pwm_h1_intr(void *arg, int irq)
+{
 
 	stm32f4_pwm_intr(arg, irq);
+	mdx_sem_post(&pnp.motor_h1.step_sem);
+}
 
-	mdx_sem_post(&pnp.motor_z.step_sem);
+void
+pnp_pwm_h2_intr(void *arg, int irq)
+{
+
+	stm32f4_pwm_intr(arg, irq);
+	mdx_sem_post(&pnp.motor_h2.step_sem);
 }
 
 static int

@@ -55,6 +55,8 @@ struct mdx_device dev_nvic = { .sc = &nvic_sc };
 struct stm32f4_pwm_softc pwm_x_sc;
 struct stm32f4_pwm_softc pwm_y_sc;
 struct stm32f4_pwm_softc pwm_z_sc;
+struct stm32f4_pwm_softc pwm_h1_sc;
+struct stm32f4_pwm_softc pwm_h2_sc;
 
 void
 udelay(uint32_t usec)
@@ -107,7 +109,8 @@ board_init(void)
 
 	stm32f4_flash_setup(&flash_sc);
 	reg = (GPIOAEN | GPIOBEN | GPIOCEN | GPIODEN | GPIOEEN);
-	stm32f4_rcc_setup(&rcc_sc, reg, RNGEN, 0, (TIM14EN | TIM4EN),
+	stm32f4_rcc_setup(&rcc_sc, reg, RNGEN, 0,
+	    (TIM12EN | TIM13EN | TIM14EN | TIM4EN),
 	    (TIM1EN | TIM8EN | TIM10EN | USART1EN));
 	stm32f4_gpio_init(&gpio_sc, GPIO_BASE);
 	gpio_config(&gpio_sc);
@@ -146,4 +149,14 @@ board_init(void)
 	stm32f4_pwm_init(&pwm_z_sc, TIM14_BASE, 84000000);
 	mdx_intc_setup(&dev_nvic, 45, pnp_pwm_z_intr, &pwm_z_sc);
 	mdx_intc_enable(&dev_nvic, 45);
+
+	/* Head 1 / TIM13 CH1 */
+	stm32f4_pwm_init(&pwm_h1_sc, TIM13_BASE, 84000000);
+	mdx_intc_setup(&dev_nvic, 44, pnp_pwm_h1_intr, &pwm_h1_sc);
+	mdx_intc_enable(&dev_nvic, 44);
+
+	/* Head 2 / TIM12 CH1 */
+	stm32f4_pwm_init(&pwm_h2_sc, TIM12_BASE, 84000000);
+	mdx_intc_setup(&dev_nvic, 43, pnp_pwm_h2_intr, &pwm_h2_sc);
+	mdx_intc_enable(&dev_nvic, 43);
 }
