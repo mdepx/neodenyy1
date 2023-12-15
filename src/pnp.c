@@ -38,6 +38,15 @@
 #include "board.h"
 #include "pnp.h"
 
+#define	PNP_DEBUG
+#undef	PNP_DEBUG
+
+#ifdef	PNP_DEBUG
+#define	dprintf(fmt, ...)	printf(fmt, ##__VA_ARGS__)
+#else
+#define	dprintf(fmt, ...)
+#endif
+
 extern struct stm32f4_gpio_softc gpio_sc;
 extern struct stm32f4_pwm_softc pwm_x_sc;
 extern struct stm32f4_pwm_softc pwm_y_sc;
@@ -331,7 +340,7 @@ pnp_move_xy(uint32_t new_pos_x, uint32_t new_pos_y)
 	mdx_sem_wait(&pnp.motor_x.task.task_compl_sem);
 	mdx_sem_wait(&pnp.motor_y.task.task_compl_sem);
 
-	printf("%s: new pos %d %d\n", __func__, pnp.motor_x.pos,
+	dprintf("%s: new pos %d %d\n", __func__, pnp.motor_x.pos,
 	    pnp.motor_y.pos);
 
 	return (0);
@@ -365,7 +374,7 @@ pnp_move_z(int new_pos)
 	mdx_sem_post(&motor->worker_sem);
 	mdx_sem_wait(&motor->task.task_compl_sem);
 
-	printf("%s: new z %d\n", __func__, motor->pos);
+	dprintf("%s: new z %d\n", __func__, motor->pos);
 
 	return (0);
 }
