@@ -327,12 +327,12 @@ pnp_worker_thread(void *arg)
 
 	while (1) {
 		mdx_sem_wait(&motor->worker_sem);
-		printf("%s: TR\n", __func__);
+		dprintf("%s: TR\n", __func__);
 
 		steps = task->steps;
 		speed = task->speed;
 
-		printf("%s: steps needed %d\n", __func__, steps);
+		dprintf("%s: steps needed %d\n", __func__, steps);
 
 		for (i = 0; i < steps; i++) {
 			if (task->check_home && motor->is_at_home()) {
@@ -351,7 +351,7 @@ pnp_worker_thread(void *arg)
 				motor->pos -= PNP_STEP_NM;
 		}
 
-		printf("%s: new pos %d\n", motor->name, motor->pos);
+		dprintf("%s: new pos %d\n", motor->name, motor->pos);
 		mdx_sem_post(&task->task_compl_sem);
 	}
 }
@@ -445,7 +445,7 @@ pnp_move_head(int head, int new_pos)
 	motor = head == 1 ? &pnp.motor_h1 : &pnp.motor_h2;
 	task = &motor->task;
 	task->check_home = 0;
-	task->speed_control = 0;
+	task->speed_control = 1;
 
 	task->new_pos = new_pos;
 	if (task->new_pos > motor->pos) {
@@ -457,7 +457,7 @@ pnp_move_head(int head, int new_pos)
 	}
 
 	task->steps = abs(delta) / PNP_STEP_NM;
-	task->speed = 50;
+	task->speed = 100;
 
 	motor->set_direction(task->dir);
 	mdx_sem_post(&motor->worker_sem);
@@ -708,7 +708,6 @@ pnp_initialize(void)
 	pnp_xenable(1);
 	pnp_yenable(1);
 	pnp_zenable(1);
-	pnp_henable(1);
 
 	return (0);
 }
@@ -720,7 +719,6 @@ pnp_deinitialize(void)
 	pnp_xenable(0);
 	pnp_yenable(0);
 	pnp_zenable(0);
-	pnp_henable(0);
 }
 
 static void
@@ -728,12 +726,17 @@ pnp_test_heads(void)
 {
 
 	printf("starting moving head\n");
-	while (1) {
-		pnp_move_head(1, 20000000);
-		pnp_move_head(2, 20000000);
+	while (2) {
+		pnp_henable(1);
+		pnp_move_head(1, 10000000);
+		pnp_move_head(2, 10000000);
+		pnp_henable(0);
 		mdx_usleep(500000);
-		pnp_move_head(1, -20000000);
-		pnp_move_head(2, -20000000);
+
+		pnp_henable(1);
+		pnp_move_head(1, -10000000);
+		pnp_move_head(2, -10000000);
+		pnp_henable(0);
 		mdx_usleep(500000);
 	}
 	printf("head moving done\n");
@@ -765,17 +768,10 @@ pnp_test(void)
 	int error;
 
 	pnp_initialize();
-
-	mdx_usleep(500000);
-
 	pnp_test_heads();
-	while (1)
-		mdx_usleep(100000);
-
 	error = pnp_move_home();
 	if (error)
 		return (error);
-
 	pnp_move_random();
 	pnp_deinitialize();
 
