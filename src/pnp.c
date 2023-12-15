@@ -631,17 +631,17 @@ pnp_initialize(void)
 	mdx_sem_init(&pnp.motor_z.task.task_compl_sem, 0);
 
 	pnp_motor_initialize(&pnp.motor_h1, "H1 Motor");
-	pnp.motor_z.set_direction = pnp_h1set_direction;
-	pnp.motor_z.step = h1step;
-	pnp.motor_z.chanset = (1 << 0);
-	pnp.motor_z.is_at_home = NULL;
+	pnp.motor_h1.set_direction = pnp_h1set_direction;
+	pnp.motor_h1.step = h1step;
+	pnp.motor_h1.chanset = (1 << 0);
+	pnp.motor_h1.is_at_home = NULL;
 	mdx_sem_init(&pnp.motor_h1.task.task_compl_sem, 0);
 
 	pnp_motor_initialize(&pnp.motor_h2, "H2 Motor");
-	pnp.motor_z.set_direction = pnp_h2set_direction;
-	pnp.motor_z.step = h2step;
-	pnp.motor_z.chanset = (1 << 0);
-	pnp.motor_z.is_at_home = NULL;
+	pnp.motor_h2.set_direction = pnp_h2set_direction;
+	pnp.motor_h2.step = h2step;
+	pnp.motor_h2.chanset = (1 << 0);
+	pnp.motor_h2.is_at_home = NULL;
 	mdx_sem_init(&pnp.motor_h2.task.task_compl_sem, 0);
 
 	error = pnp_thread_create("X Motor", &pnp.motor_x);
