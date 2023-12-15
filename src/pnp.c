@@ -724,9 +724,10 @@ pnp_deinitialize(void)
 static void
 pnp_test_heads(void)
 {
+	int i;
 
 	printf("starting moving head\n");
-	while (2) {
+	for (i = 0; i < 2; i++) {
 		pnp_henable(1);
 		pnp_move_head(1, 10000000);
 		pnp_move_head(2, 10000000);
