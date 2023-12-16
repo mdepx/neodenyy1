@@ -47,8 +47,8 @@
 #define	dprintf(fmt, ...)
 #endif
 
-#define	PNP_MAX_X_NM		300000000	/* nanometers */
-#define	PNP_MAX_Y_NM		300000000	/* nanometers */
+#define	PNP_MAX_X_NM		360000000	/* nanometers */
+#define	PNP_MAX_Y_NM		360000000	/* nanometers */
 #define	PNP_XYZ_STEP_NM		6250	/* Length of a step, nanometers */
 #define	PNP_STEPS_PER_MM	(1000000 / (PNP_XYZ_STEP_NM))
 
