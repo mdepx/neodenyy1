@@ -36,9 +36,6 @@
 #include "board.h"
 #include "pnp.h"
 
-extern struct stm32f4_gpio_softc gpio_sc;
-extern struct stm32f4_pwm_softc pwm_x_sc;
-
 int
 main(void)
 {

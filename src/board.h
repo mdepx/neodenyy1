@@ -29,4 +29,11 @@
 
 uint32_t board_get_random(void);
 
+extern struct stm32f4_gpio_softc gpio_sc;
+extern struct stm32f4_pwm_softc pwm_x_sc;
+extern struct stm32f4_pwm_softc pwm_y_sc;
+extern struct stm32f4_pwm_softc pwm_z_sc;
+extern struct stm32f4_pwm_softc pwm_h1_sc;
+extern struct stm32f4_pwm_softc pwm_h2_sc;
+
 #endif /* !_SRC_BOARD_H_ */

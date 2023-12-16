@@ -47,13 +47,6 @@
 #define	dprintf(fmt, ...)
 #endif
 
-extern struct stm32f4_gpio_softc gpio_sc;
-extern struct stm32f4_pwm_softc pwm_x_sc;
-extern struct stm32f4_pwm_softc pwm_y_sc;
-extern struct stm32f4_pwm_softc pwm_z_sc;
-extern struct stm32f4_pwm_softc pwm_h1_sc;
-extern struct stm32f4_pwm_softc pwm_h2_sc;
-
 #define	PNP_MAX_X_NM	300000000	/* nanometers */
 #define	PNP_MAX_Y_NM	300000000	/* nanometers */
 #define	PNP_XYZ_STEP_NM	6250		/* Length of a step, nanometers */
