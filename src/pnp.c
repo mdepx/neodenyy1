@@ -129,35 +129,33 @@ pnp_pwm_h2_intr(void *arg, int irq)
 	mdx_sem_post(&pnp.motor_h2.step_sem);
 }
 
-static int
+static inline int
 pnp_is_x_home(void)
 {
 
 	return (pin_get(&gpio_sc, PORT_C, 6));
 }
 
-static int
+static inline int
 pnp_is_yl_home(void)
 {
 
 	return (pin_get(&gpio_sc, PORT_C, 7));
 }
 
-static int
+static inline int
 pnp_is_z_home(void)
 {
 
 	return (pin_get(&gpio_sc, PORT_B, 4));
 }
 
-#if 0
-static int
+static inline int __unused
 pnp_is_yr_home(void)
 {
 
 	return (pin_get(&gpio_sc, PORT_C, 1));
 }
-#endif
 
 static void
 pnp_xenable(int enable)
