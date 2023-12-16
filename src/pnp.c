@@ -53,12 +53,11 @@ extern struct stm32f4_pwm_softc pwm_y_sc;
 extern struct stm32f4_pwm_softc pwm_z_sc;
 extern struct stm32f4_pwm_softc pwm_h1_sc;
 extern struct stm32f4_pwm_softc pwm_h2_sc;
-extern struct stm32f4_rng_softc rng_sc;
 
 #define	PNP_MAX_X_NM	300000000	/* nanometers */
 #define	PNP_MAX_Y_NM	300000000	/* nanometers */
-#define	PNP_STEP_NM	6250		/* Length of a step, nanometers */
-#define	PNP_STEPS_PER_MM	160
+#define	PNP_XYZ_STEP_NM	6250		/* Length of a step, nanometers */
+#define	PNP_STEPS_PER_MM	(1000000 / (PNP_XYZ_STEP_NM))
 
 struct move_task {
 	int new_pos;
@@ -593,21 +592,6 @@ pnp_move_home(void)
 	return (0);
 }
 
-static uint32_t
-get_random(void)
-{
-	uint32_t data;
-	int error;
-
-	do {
-		error = stm32f4_rng_data(&rng_sc, &data);
-		if (error == 0)
-			break;
-	} while (1);
-
-	return (data);
-}
-
 static void
 pnp_motor_initialize(struct motor_state *motor, char *name)
 {
@@ -615,7 +599,7 @@ pnp_motor_initialize(struct motor_state *motor, char *name)
 	mdx_sem_init(&motor->worker_sem, 0);
 	mdx_sem_init(&motor->step_sem, 0);
 	motor->name = name;
-	motor->step_nm = PNP_STEP_NM;
+	motor->step_nm = PNP_XYZ_STEP_NM;
 }
 
 static int
@@ -753,8 +737,8 @@ pnp_move_random(void)
 	int i;
 
 	for (i = 0; i < 100; i++) {
-		new_x = get_random() % PNP_MAX_X_NM;
-		new_y = get_random() % PNP_MAX_Y_NM;
+		new_x = board_get_random() % PNP_MAX_X_NM;
+		new_y = board_get_random() % PNP_MAX_Y_NM;
 		printf("%d: moving to %u %u\n", i, new_x, new_y);
 		pnp_move_xy(new_x, new_y);
 		pnp_move_z(-20000000);

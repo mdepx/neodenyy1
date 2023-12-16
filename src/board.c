@@ -41,17 +41,16 @@
 #include "gpio.h"
 #include "pnp.h"
 
-struct stm32f4_usart_softc usart_sc;
+static struct stm32f4_usart_softc usart_sc;
+static struct stm32f4_flash_softc flash_sc;
+static struct stm32f4_pwr_softc pwr_sc;
+static struct stm32f4_rcc_softc rcc_sc;
+static struct stm32f4_timer_softc timer_sc;
+static struct stm32f4_rng_softc rng_sc;
+static struct arm_nvic_softc nvic_sc;
+static struct mdx_device dev_nvic = { .sc = &nvic_sc };
+
 struct stm32f4_gpio_softc gpio_sc;
-struct stm32f4_flash_softc flash_sc;
-struct stm32f4_pwr_softc pwr_sc;
-struct stm32f4_rcc_softc rcc_sc;
-struct stm32f4_timer_softc timer_sc;
-struct stm32f4_rng_softc rng_sc;
-
-struct arm_nvic_softc nvic_sc;
-struct mdx_device dev_nvic = { .sc = &nvic_sc };
-
 struct stm32f4_pwm_softc pwm_x_sc;
 struct stm32f4_pwm_softc pwm_y_sc;
 struct stm32f4_pwm_softc pwm_z_sc;
@@ -87,6 +86,21 @@ uart_putchar(int c, void *arg)
 		stm32f4_usart_putc(sc, '\r');
 
 	stm32f4_usart_putc(sc, c);
+}
+
+uint32_t
+board_get_random(void)
+{
+	uint32_t data;
+	int error;
+
+	do {
+		error = stm32f4_rng_data(&rng_sc, &data);
+		if (error == 0)
+			break;
+	} while (1);
+
+	return (data);
 }
 
 void

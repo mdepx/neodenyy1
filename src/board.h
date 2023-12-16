@@ -27,4 +27,6 @@
 #ifndef _SRC_BOARD_H_
 #define	_SRC_BOARD_H_
 
+uint32_t board_get_random(void);
+
 #endif /* !_SRC_BOARD_H_ */
