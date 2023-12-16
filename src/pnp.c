@@ -48,7 +48,6 @@
 #define	PNP_MAX_X_NM		360000000	/* nanometers */
 #define	PNP_MAX_Y_NM		360000000	/* nanometers */
 #define	PNP_XYZ_STEP_NM		6250	/* Length of a step, nanometers */
-#define	PNP_STEPS_PER_MM	(1000000 / (PNP_XYZ_STEP_NM))
 
 struct move_task {
 	int new_pos;
@@ -466,9 +465,9 @@ pnp_move_home_motor(struct motor_state *motor)
 	if (motor->is_at_home()) {
 		/* Already at home, move back a bit. */
 		motor->set_direction(1);
-		task->steps = PNP_STEPS_PER_MM * 10;
+		task->steps = 10000000 / motor->step_nm;
 		task->speed = 20;
-		task->speed_control = 0;
+		task->speed_control = 1;
 		task->check_home = 0;
 		mdx_sem_post(&motor->worker_sem);
 		mdx_sem_wait(&task->task_compl_sem);
