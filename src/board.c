@@ -138,7 +138,7 @@ board_init(void)
 	arm_nvic_init(&dev_nvic, NVIC_BASE);
 
 	malloc_init();
-	malloc_add_region((void *)0x20008000, 64 * 1024);
+	malloc_add_region((void *)MALLOC_REGION_START, MALLOC_REGION_SIZE);
 
 	/*
 	 * All timers: (168MHz / PPRE2_4) * 2 = 84MHz.

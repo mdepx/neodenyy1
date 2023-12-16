@@ -27,7 +27,8 @@
 #ifndef _SRC_BOARD_H_
 #define	_SRC_BOARD_H_
 
-uint32_t board_get_random(void);
+#define	MALLOC_REGION_START	0x20010000
+#define	MALLOC_REGION_SIZE	0x00010000 /* 64kb */
 
 extern struct stm32f4_gpio_softc gpio_sc;
 extern struct stm32f4_pwm_softc pwm_x_sc;
@@ -35,5 +36,7 @@ extern struct stm32f4_pwm_softc pwm_y_sc;
 extern struct stm32f4_pwm_softc pwm_z_sc;
 extern struct stm32f4_pwm_softc pwm_h1_sc;
 extern struct stm32f4_pwm_softc pwm_h2_sc;
+
+uint32_t board_get_random(void);
 
 #endif /* !_SRC_BOARD_H_ */
