@@ -47,9 +47,9 @@
 #define	dprintf(fmt, ...)
 #endif
 
-#define	PNP_MAX_X_NM	300000000	/* nanometers */
-#define	PNP_MAX_Y_NM	300000000	/* nanometers */
-#define	PNP_XYZ_STEP_NM	6250		/* Length of a step, nanometers */
+#define	PNP_MAX_X_NM		300000000	/* nanometers */
+#define	PNP_MAX_Y_NM		300000000	/* nanometers */
+#define	PNP_XYZ_STEP_NM		6250	/* Length of a step, nanometers */
 #define	PNP_STEPS_PER_MM	(1000000 / (PNP_XYZ_STEP_NM))
 
 struct move_task {
@@ -71,7 +71,7 @@ struct motor_state {
 	int chanset;	/* PWM channels. */
 	mdx_sem_t worker_sem;
 	struct move_task task;
-	char *name;
+	const char *name;
 	void (*set_direction)(int dir);
 	int (*is_at_home)(void);
 	void (*step)(int chanset, int speed);
@@ -586,7 +586,7 @@ pnp_move_home(void)
 }
 
 static void
-pnp_motor_initialize(struct motor_state *motor, char *name)
+pnp_motor_initialize(struct motor_state *motor, const char *name)
 {
 
 	mdx_sem_init(&motor->worker_sem, 0);
@@ -596,7 +596,7 @@ pnp_motor_initialize(struct motor_state *motor, char *name)
 }
 
 static int
-pnp_thread_create(char *name, void *arg)
+pnp_thread_create(const char *name, void *arg)
 {
 	struct thread *td;
 

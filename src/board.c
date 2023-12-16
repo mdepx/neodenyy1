@@ -144,32 +144,32 @@ board_init(void)
 	 * All timers: (168MHz / PPRE2_4) * 2 = 84MHz.
 	 */
 
-	/* System timer / TIM8 */
+	/* System timer: TIM8 */
 	stm32f4_timer_init(&timer_sc, TIM8_BASE, 84000000);
 	mdx_intc_setup(&dev_nvic, 46, stm32f4_timer_intr, &timer_sc);
 	mdx_intc_enable(&dev_nvic, 46);
 
-	/* X Motor / TIM10 CH1 */
+	/* X Motor: TIM10 CH1 */
 	stm32f4_pwm_init(&pwm_x_sc, TIM10_BASE, 84000000);
 	mdx_intc_setup(&dev_nvic, 25, pnp_pwm_x_intr, &pwm_x_sc);
 	mdx_intc_enable(&dev_nvic, 25);
 
-	/* Y L/R Motors / TIM4 CH1,CH2 */
+	/* Y L/R Motors: TIM4 CH1,CH2 */
 	stm32f4_pwm_init(&pwm_y_sc, TIM4_BASE, 84000000);
 	mdx_intc_setup(&dev_nvic, 30, pnp_pwm_y_intr, &pwm_y_sc);
 	mdx_intc_enable(&dev_nvic, 30);
 
-	/* Z Motors / TIM14 CH1 */
+	/* Z Motors: TIM14 CH1 */
 	stm32f4_pwm_init(&pwm_z_sc, TIM14_BASE, 84000000);
 	mdx_intc_setup(&dev_nvic, 45, pnp_pwm_z_intr, &pwm_z_sc);
 	mdx_intc_enable(&dev_nvic, 45);
 
-	/* Head 1 / TIM13 CH1 */
+	/* Head 1: TIM13 CH1 */
 	stm32f4_pwm_init(&pwm_h1_sc, TIM13_BASE, 84000000);
 	mdx_intc_setup(&dev_nvic, 44, pnp_pwm_h1_intr, &pwm_h1_sc);
 	mdx_intc_enable(&dev_nvic, 44);
 
-	/* Head 2 / TIM12 CH1 */
+	/* Head 2: TIM12 CH1 */
 	stm32f4_pwm_init(&pwm_h2_sc, TIM12_BASE, 84000000);
 	mdx_intc_setup(&dev_nvic, 43, pnp_pwm_h2_intr, &pwm_h2_sc);
 	mdx_intc_enable(&dev_nvic, 43);
