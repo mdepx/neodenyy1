@@ -84,6 +84,7 @@ struct motor_state {
 	int (*is_at_home)(void);
 	void (*step)(int chanset, int speed);
 	mdx_sem_t step_sem;
+	uint32_t step_nm;	/* Length of a step, nanometers */
 };
 
 struct pnp_state {
@@ -346,9 +347,9 @@ pnp_worker_thread(void *arg)
 			motor->step(motor->chanset, speed);
 			mdx_sem_wait(&motor->step_sem);
 			if (task->dir == 1)
-				motor->pos += PNP_STEP_NM;
+				motor->pos += motor->step_nm;
 			else
-				motor->pos -= PNP_STEP_NM;
+				motor->pos -= motor->step_nm;
 		}
 
 		dprintf("%s: new pos %d\n", motor->name, motor->pos);
@@ -373,7 +374,7 @@ mover(struct motor_state *motor, uint32_t new_pos)
 		delta = motor->pos - task->new_pos;
 	}
 
-	task->steps = delta / PNP_STEP_NM;
+	task->steps = delta / motor->step_nm;
 	task->speed = 100;
 	task->speed_control = 1;
 
@@ -423,7 +424,7 @@ pnp_move_z(int new_pos)
 		delta = motor->pos - task->new_pos;
 	}
 
-	task->steps = abs(delta) / PNP_STEP_NM;
+	task->steps = abs(delta) / motor->step_nm;
 	task->speed = 100;
 
 	motor->set_direction(task->dir);
@@ -456,7 +457,7 @@ pnp_move_head(int head, int new_pos)
 		delta = motor->pos - task->new_pos;
 	}
 
-	task->steps = abs(delta) / PNP_STEP_NM;
+	task->steps = abs(delta) / motor->step_nm;
 	task->speed = 100;
 
 	motor->set_direction(task->dir);
@@ -488,7 +489,7 @@ pnp_move_home_motor(struct motor_state *motor)
 	}
 
 	/* Try to reach home. */
-	task->steps = PNP_MAX_Y_NM / PNP_STEP_NM;
+	task->steps = PNP_MAX_Y_NM / motor->step_nm;
 	task->check_home = 1;
 	task->speed = 30;
 	task->speed_control = 0;
@@ -497,7 +498,7 @@ pnp_move_home_motor(struct motor_state *motor)
 	mdx_sem_wait(&task->task_compl_sem);
 
 	/* Now go into home for 1 mm. */
-	task->steps = 1000000 / PNP_STEP_NM;
+	task->steps = 1000000 / motor->step_nm;
 	task->check_home = 0;
 	task->speed = 15;
 	task->speed_control = 0;
@@ -608,12 +609,13 @@ get_random(void)
 }
 
 static void
-pnp_motor_initialize(struct motor_state *state, char *name)
+pnp_motor_initialize(struct motor_state *motor, char *name)
 {
 
-	mdx_sem_init(&state->worker_sem, 0);
-	mdx_sem_init(&state->step_sem, 0);
-	state->name = name;
+	mdx_sem_init(&motor->worker_sem, 0);
+	mdx_sem_init(&motor->step_sem, 0);
+	motor->name = name;
+	motor->step_nm = PNP_STEP_NM;
 }
 
 static int
