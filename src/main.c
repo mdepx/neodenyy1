@@ -25,13 +25,7 @@
  */
 
 #include <sys/cdefs.h>
-#include <sys/console.h>
 #include <sys/systm.h>
-#include <sys/malloc.h>
-
-#include <dev/display/panel.h>
-#include <dev/display/dsi.h>
-#include <arm/stm/stm32f4.h>
 
 #include "board.h"
 #include "pnp.h"

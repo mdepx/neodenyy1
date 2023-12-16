@@ -31,19 +31,19 @@
 #include "gpio.h"
 
 static const struct gpio_pin neodenyy1_pins[] = {
+	/* Console. */
 	{ PORT_A, 9, MODE_ALT, 7, PULLUP }, /* USART1_TX */
 	{ PORT_A, 10, MODE_ALT, 7, PULLUP }, /* USART1_RX */
 
 	/* Placement Head. */
 	{ PORT_E, 2, MODE_OUT, 0, PULLDOWN }, /* Air 1 */
 	{ PORT_E, 1, MODE_OUT, 0, PULLDOWN }, /* Air 2 */
+
+	/* Needle. */
 	{ PORT_E, 0, MODE_OUT, 0, PULLDOWN }, /* N */
 
-	/* Needle Set */
+	/* Needle Set. */
 	{ PORT_B, 5, MODE_INP, 0, PULLDOWN }, /* NS */
-
-	/* At least one head is at Z. */
-	{ PORT_B, 4, MODE_INP, 0, FLOAT }, /* SZ */
 
 	/* Head 1 has component. */
 	{ PORT_B, 3, MODE_INP, 0, PULLDOWN }, /* S1 */
@@ -60,15 +60,16 @@ static const struct gpio_pin neodenyy1_pins[] = {
 	{ PORT_C, 1, MODE_INP, 0, FLOAT }, /* SensorR */
 	{ PORT_C, 6, MODE_INP, 0, FLOAT }, /* SensorL head */
 	{ PORT_C, 7, MODE_INP, 0, FLOAT }, /* SensorL */
+	/* Z Motor Home. */
+	{ PORT_B, 4, MODE_INP, 0, FLOAT }, /* SZ */
 
-
-	/* TODO: Y Motor R */
+	/* Y Motor R */
 	{ PORT_C,  0, MODE_OUT, 0, PULLDOWN }, /* ST */
 	{ PORT_C, 13, MODE_OUT, 0, PULLDOWN }, /* FR */
 	{ PORT_B,  7, MODE_ALT, 2, PULLDOWN }, /* STP TIM4_CH2 */
 	{ PORT_D, 15, MODE_OUT, 0, PULLDOWN }, /* Y Motor VREF */
 
-	/* TODO: Y Motor L */
+	/* Y Motor L */
 	{ PORT_A, 8, MODE_OUT, 0, PULLDOWN }, /* ST */
 	{ PORT_C, 9, MODE_OUT, 0, PULLDOWN }, /* FR */
 	{ PORT_B, 6, MODE_ALT, 2, PULLDOWN }, /* STP TIM4_CH1 */
