@@ -151,11 +151,6 @@ board_init(void)
 	/* DMA2 Stream7 */
 	mdx_intc_setup(&dev_nvic, 70, stm32f4_dma_intr, &dma2_sc);
 	mdx_intc_enable(&dev_nvic, 70);
-
-	/* Setup USART interrupts. */
-	stm32f4_usart_set_cb(&usart_sc, pnp_recv);
-	mdx_intc_setup(&dev_nvic, 37, stm32f4_usart_intr, &usart_sc);
-	mdx_intc_enable(&dev_nvic, 37);
 #endif
 
 	malloc_init();
