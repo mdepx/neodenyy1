@@ -738,17 +738,14 @@ pnp_move_random(void)
 }
 
 #define	MAX_BUF_SIZE	4096
-
 uint8_t buffer[MAX_BUF_SIZE];
-int bufcnt;
-uint32_t dma_buf;
+uint8_t cmd_buffer[64];
+int cmd_buffer_ptr;
 
 static void
 pnp_dmarecv_init(void)
 {
 	struct stm32f4_dma_conf conf;
-
-	bufcnt = 0;
 
 	bzero(&conf, sizeof(struct stm32f4_dma_conf));
 	conf.mem0 = (uintptr_t)buffer;
@@ -763,9 +760,6 @@ pnp_dmarecv_init(void)
 	stm32f4_dma_setup(&dma2_sc, &conf);
 	stm32f4_dma_control(&dma2_sc, 2, 1);
 }
-
-uint8_t cmd_buffer[64];
-int cmd_buffer_ptr;
 
 static void
 pnp_command(char *line, int len)
