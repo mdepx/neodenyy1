@@ -769,9 +769,13 @@ struct command {
 	int x;
 	int y;
 	int z;
+	int h1;
+	int h2;
 	int x_set;
 	int y_set;
 	int z_set;
+	int h1_set;
+	int h2_set;
 };
 
 static void
@@ -865,6 +869,14 @@ pnp_command(char *line, int len)
 		case 'Z':
 			cmd.z = value * 1000000;
 			cmd.z_set = 1;
+			break;
+		case 'I':
+			cmd.h1 = value * 1000000;
+			cmd.h1_set = 1;
+			break;
+		case 'J':
+			cmd.h2 = value * 1000000;
+			cmd.h2_set = 1;
 			break;
 		case 'F':
 			break;
