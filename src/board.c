@@ -134,6 +134,7 @@ board_init(void)
 
 	stm32f4_usart_init(&usart_sc, USART1_BASE, 42000000, 115200);
 	mdx_console_register(uart_putchar, (void *)&usart_sc);
+	stm32f4_usart_setup_receiver(&usart_sc, 1, NULL);
 
 	printf("MDEPX is starting up\n");
 
