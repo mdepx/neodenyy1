@@ -30,6 +30,8 @@
 #define	MALLOC_REGION_START	0x20010000
 #define	MALLOC_REGION_SIZE	0x00010000 /* 64kb */
 
+extern struct stm32f4_dma_softc dma1_sc;
+extern struct stm32f4_dma_softc dma2_sc;
 extern struct stm32f4_gpio_softc gpio_sc;
 extern struct stm32f4_pwm_softc pwm_x_sc;
 extern struct stm32f4_pwm_softc pwm_y_sc;

@@ -737,10 +737,108 @@ pnp_move_random(void)
 	pnp_move_xy(0, 0);
 }
 
+#define	MAX_BUF_SIZE	4096
+
+uint8_t buffer[MAX_BUF_SIZE];
+int bufcnt;
+uint32_t dma_buf;
+
+static void
+pnp_dmarecv_init(void)
+{
+	struct stm32f4_dma_conf conf;
+
+	bufcnt = 0;
+
+	bzero(&conf, sizeof(struct stm32f4_dma_conf));
+	conf.mem0 = (uintptr_t)buffer;
+	conf.sid = 2;
+	conf.periph_addr = USART1_BASE + USART_DR;
+	conf.dir = 0;
+	conf.channel = 4;
+	conf.circ = 1;
+	conf.psize = 8;
+	conf.nbytes = MAX_BUF_SIZE;
+
+	stm32f4_dma_setup(&dma2_sc, &conf);
+	stm32f4_dma_control(&dma2_sc, 2, 1);
+}
+
+uint8_t cmd_buffer[64];
+int cmd_buffer_ptr;
+
+static void
+pnp_command(char *line, int len)
+{
+	int i;
+
+	printf("%s: ", __func__);
+	for (i = 0; i < len; i++)
+		printf("%c", line[i]);
+	printf("\n");
+
+	printf("OK\n");
+	printf("COMPLETE\n");
+}
+
+static void
+pnp_process_data(int ptr, int len)
+{
+	uint8_t *start;
+	uint8_t ch;
+	int i;
+
+	start = &buffer[ptr];
+	for (i = 0; i < len; i++) {
+		ch = start[i];
+		//printf("ch %d\n", ch);
+		cmd_buffer[cmd_buffer_ptr] = ch;
+		if (ch == '\n') { /* LF */
+			pnp_command(cmd_buffer, cmd_buffer_ptr);
+			cmd_buffer_ptr = 0;
+		} else
+			cmd_buffer_ptr += 1;
+	}
+}
+
+static int
+pnp_mainloop(void)
+{
+	uint32_t cnt;
+	int ptr;
+
+	ptr = 0;
+	cmd_buffer_ptr = 0;
+
+	pnp_dmarecv_init();
+
+	/* Periodically poll for a new data. */
+	while (1) {
+		cnt = stm32f4_dma_getcnt(&dma2_sc, 2);
+		cnt = MAX_BUF_SIZE - cnt;
+
+		if (cnt > ptr) {
+			pnp_process_data(ptr, (cnt - ptr));
+			ptr = cnt;
+		} else if (cnt < ptr) {
+			/* Buffer wrapped. */
+			pnp_process_data(ptr, MAX_BUF_SIZE - ptr);
+			pnp_process_data(0, cnt);
+			ptr = cnt;
+		}
+
+		mdx_usleep(10000);
+	}
+
+	return (0);
+}
+
 int
 pnp_test(void)
 {
 	int error;
+
+	pnp_mainloop();
 
 	pnp_initialize();
 	pnp_test_heads();

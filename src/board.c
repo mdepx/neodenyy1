@@ -50,6 +50,8 @@ static struct stm32f4_rng_softc rng_sc;
 static struct arm_nvic_softc nvic_sc;
 static struct mdx_device dev_nvic = { .sc = &nvic_sc };
 
+struct stm32f4_dma_softc dma1_sc;
+struct stm32f4_dma_softc dma2_sc;
 struct stm32f4_gpio_softc gpio_sc;
 struct stm32f4_pwm_softc pwm_x_sc;
 struct stm32f4_pwm_softc pwm_y_sc;
@@ -123,6 +125,7 @@ board_init(void)
 
 	stm32f4_flash_setup(&flash_sc);
 	reg = (GPIOAEN | GPIOBEN | GPIOCEN | GPIODEN | GPIOEEN);
+	reg |= DMA1EN | DMA2EN;
 	stm32f4_rcc_setup(&rcc_sc, reg, RNGEN, 0,
 	    (TIM12EN | TIM13EN | TIM14EN | TIM4EN),
 	    (TIM1EN | TIM8EN | TIM10EN | USART1EN));
@@ -136,6 +139,24 @@ board_init(void)
 
 	stm32f4_rng_init(&rng_sc, RNG_BASE);
 	arm_nvic_init(&dev_nvic, NVIC_BASE);
+
+	stm32f4_dma_init(&dma1_sc, DMA1_BASE);
+	stm32f4_dma_init(&dma2_sc, DMA2_BASE);
+
+#if 0
+	/* DMA2 Stream2 */
+	mdx_intc_setup(&dev_nvic, 58, stm32f4_dma_intr, &dma2_sc);
+	mdx_intc_enable(&dev_nvic, 58);
+
+	/* DMA2 Stream7 */
+	mdx_intc_setup(&dev_nvic, 70, stm32f4_dma_intr, &dma2_sc);
+	mdx_intc_enable(&dev_nvic, 70);
+
+	/* Setup USART interrupts. */
+	stm32f4_usart_set_cb(&usart_sc, pnp_recv);
+	mdx_intc_setup(&dev_nvic, 37, stm32f4_usart_intr, &usart_sc);
+	mdx_intc_enable(&dev_nvic, 37);
+#endif
 
 	malloc_init();
 	malloc_add_region((void *)MALLOC_REGION_START, MALLOC_REGION_SIZE);
