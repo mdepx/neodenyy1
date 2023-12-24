@@ -768,36 +768,43 @@ struct command {
 	int type;
 	int x;
 	int y;
+	int z;
 	int x_set;
 	int y_set;
+	int z_set;
 };
 
 static void
 pnp_command_move(struct command *cmd)
 {
-	uint32_t new_pos_x, new_pos_y;
+	uint32_t x, y, z;
 
 	if (cmd->x_set) {
-		printf("moving X to %d\n", cmd->x);
-		new_pos_x = cmd->x;
-		if (new_pos_x > PNP_MAX_X_NM)
-			new_pos_x = PNP_MAX_X_NM;
-		mover(&pnp.motor_x, new_pos_x);
+		x = cmd->x;
+		if (x > PNP_MAX_X_NM)
+			x = PNP_MAX_X_NM;
+		printf("moving X to %d\n", x);
+		mover(&pnp.motor_x, x);
 	}
 
 	if (cmd->y_set) {
-		printf("moving Y to %d\n", cmd->x);
-		new_pos_y = cmd->y;
-		if (new_pos_y > PNP_MAX_Y_NM)
-			new_pos_y = PNP_MAX_Y_NM;
-		mover(&pnp.motor_y, new_pos_y);
+		y = cmd->y;
+		if (y > PNP_MAX_Y_NM)
+			y = PNP_MAX_Y_NM;
+		printf("moving Y to %d\n", y);
+		mover(&pnp.motor_y, y);
 	}
-
 
 	if (cmd->x_set)
 		mdx_sem_wait(&pnp.motor_x.task.task_compl_sem);
 	if (cmd->y_set)
 		mdx_sem_wait(&pnp.motor_y.task.task_compl_sem);
+
+	if (cmd->z_set) {
+		z = cmd->z;
+		printf("moving Z to %d\n", z);
+		pnp_move_z(z);
+	}
 }
 
 static void
@@ -854,6 +861,10 @@ pnp_command(char *line, int len)
 		case 'Y':
 			cmd.y = value * 1000000;
 			cmd.y_set = 1;
+			break;
+		case 'Z':
+			cmd.z = value * 1000000;
+			cmd.z_set = 1;
 			break;
 		case 'F':
 			break;
