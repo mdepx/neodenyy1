@@ -761,17 +761,115 @@ pnp_dmarecv_init(void)
 	stm32f4_dma_control(&dma2_sc, 2, 1);
 }
 
+#define	CMD_TYPE_NONE	0
+#define	CMD_TYPE_MOVE	1
+
+struct command {
+	int type;
+	int x;
+	int y;
+	int x_set;
+	int y_set;
+};
+
+static void
+pnp_command_move(struct command *cmd)
+{
+	uint32_t new_pos_x, new_pos_y;
+
+	if (cmd->x_set) {
+		printf("moving X to %d\n", cmd->x);
+		new_pos_x = cmd->x;
+		if (new_pos_x > PNP_MAX_X_NM)
+			new_pos_x = PNP_MAX_X_NM;
+		mover(&pnp.motor_x, new_pos_x);
+	}
+
+	if (cmd->y_set) {
+		printf("moving Y to %d\n", cmd->x);
+		new_pos_y = cmd->y;
+		if (new_pos_y > PNP_MAX_Y_NM)
+			new_pos_y = PNP_MAX_Y_NM;
+		mover(&pnp.motor_y, new_pos_y);
+	}
+
+
+	if (cmd->x_set)
+		mdx_sem_wait(&pnp.motor_x.task.task_compl_sem);
+	if (cmd->y_set)
+		mdx_sem_wait(&pnp.motor_y.task.task_compl_sem);
+}
+
 static void
 pnp_command(char *line, int len)
 {
-	int i;
+	struct command cmd;
+	uint8_t letter;
+	char *endp;
+	char *end;
+	float value;
 
-	printf("%s: ", __func__);
+#if 1
+	int i;
+	printf("GCODE: ");
 	for (i = 0; i < len; i++)
 		printf("%c", line[i]);
 	printf("\n");
+#endif
+
+	bzero(&cmd, sizeof(struct command));
+
+	end = line + len;
+	while (line < end) {
+		letter = *line;
+
+		/* Skip spaces. */
+		if (letter == ' ') {
+			line += 1;
+			continue;
+		}
+
+		if (letter < 'A' || letter > 'Z') {
+			printf("Fatal error.\n");
+			break;
+		}
+
+		/* Skip letter. */
+		line += 1;
+
+		value = strtof(line, &endp);
+		line = endp;
+
+		printf("%s: value %.3f\n", __func__, value);
+
+		switch (letter) {
+		case 'G':
+			if (value == 0.0f)
+				cmd.type = CMD_TYPE_MOVE;
+			break;
+		case 'X':
+			cmd.x = value * 1000000;
+			cmd.x_set = 1;
+			break;
+		case 'Y':
+			cmd.y = value * 1000000;
+			cmd.y_set = 1;
+			break;
+		case 'F':
+			break;
+		default:
+			break;
+		}
+	}
 
 	printf("OK\n");
+
+	switch (cmd.type) {
+	case CMD_TYPE_MOVE:
+		pnp_command_move(&cmd);
+		break;
+	};
+
 	printf("COMPLETE\n");
 }
 
@@ -832,14 +930,16 @@ pnp_test(void)
 {
 	int error;
 
-	pnp_mainloop();
-
 	pnp_initialize();
 	pnp_test_heads();
 	error = pnp_move_home();
 	if (error)
 		return (error);
-	pnp_move_random();
+
+	if (1 == 0)
+		pnp_move_random();
+	pnp_mainloop();
+
 	pnp_deinitialize();
 
 	return (0);
