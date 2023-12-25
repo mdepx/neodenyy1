@@ -798,7 +798,6 @@ pnp_dmarecv_init(void)
 
 struct command {
 	int type;
-#define	CMD_TYPE_NONE		0
 #define	CMD_TYPE_MOVE		1
 #define	CMD_TYPE_ACTUATE	2
 
@@ -814,7 +813,9 @@ struct command {
 	int h2_set;
 
 	int actuate_target;
-#define	PNP_ACTUATE_TARGET_PUMP	(1 << 0)
+#define	PNP_ACTUATE_TARGET_PUMP		1
+#define	PNP_ACTUATE_TARGET_AVAC1	2
+#define	PNP_ACTUATE_TARGET_AVAC2	3
 	int actuate_value;
 };
 
@@ -823,9 +824,20 @@ pnp_command_actuate(struct command *cmd)
 {
 	int val;
 
-	if (cmd->actuate_target & PNP_ACTUATE_TARGET_PUMP) {
-		val = cmd->actuate_value ? 1 : 0;
+	val = cmd->actuate_value ? 1 : 0;
+
+	switch (cmd->actuate_target) {
+	case PNP_ACTUATE_TARGET_PUMP:
 		pin_set(&gpio_sc, PORT_B, 13, val);
+		break;
+	case PNP_ACTUATE_TARGET_AVAC1:
+		pin_set(&gpio_sc, PORT_E, 2, val);
+		break;
+	case PNP_ACTUATE_TARGET_AVAC2:
+		pin_set(&gpio_sc, PORT_E, 1, val);
+		break;
+	default:
+		break;
 	}
 }
 
@@ -915,6 +927,12 @@ pnp_command(char *line, int len)
 		/* Skip letter. */
 		line += 1;
 
+		/* Ensure we are dealing with digit, + or -. */
+		if ((*line < '0' || *line > '9') &&
+		    (*line != '+') &&
+		    (*line != '-'))
+			break;
+
 		value = strtof(line, &endp);
 		line = endp;
 
@@ -951,6 +969,16 @@ pnp_command(char *line, int len)
 			break;
 		case 'P':
 			cmd.actuate_target |= PNP_ACTUATE_TARGET_PUMP;
+			cmd.actuate_value = value;
+			break;
+		case 'A':
+			/* Air vacuum 1 */
+			cmd.actuate_target |= PNP_ACTUATE_TARGET_AVAC1;
+			cmd.actuate_value = value;
+			break;
+		case 'V':
+			/* Air vacuum 2 */
+			cmd.actuate_target |= PNP_ACTUATE_TARGET_AVAC2;
 			cmd.actuate_value = value;
 			break;
 		case 'F':
