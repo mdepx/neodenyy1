@@ -825,11 +825,16 @@ struct command {
 static void
 pnp_command_sensor_read(struct command *cmd)
 {
+	int val;
 
-	if (cmd->sensor_read_target == 1)
-		printf("ok V:1.0\n");
-	else if (cmd->sensor_read_target == 2)
-		printf("ok W:1.1\n");
+	if (cmd->sensor_read_target == 1) {
+		val = pin_get(&gpio_sc, PORT_B, 3) ? 0 : 1;
+		printf("ok V:%d\n", val);
+
+	} else if (cmd->sensor_read_target == 2) {
+		val = pin_get(&gpio_sc, PORT_D, 4) ? 0 : 1;
+		printf("ok W:%d\n", val);
+	}
 }
 
 static void
