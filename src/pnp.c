@@ -795,11 +795,13 @@ pnp_dmarecv_init(void)
 	stm32f4_dma_control(&dma2_sc, 2, 1);
 }
 
-#define	CMD_TYPE_NONE	0
-#define	CMD_TYPE_MOVE	1
 
 struct command {
 	int type;
+#define	CMD_TYPE_NONE		0
+#define	CMD_TYPE_MOVE		1
+#define	CMD_TYPE_ACTUATE	2
+
 	int x;
 	int y;
 	int z;
@@ -810,7 +812,22 @@ struct command {
 	int z_set;
 	int h1_set;
 	int h2_set;
+
+	int actuate_target;
+#define	PNP_ACTUATE_TARGET_PUMP	(1 << 0)
+	int actuate_value;
 };
+
+static void
+pnp_command_actuate(struct command *cmd)
+{
+	int val;
+
+	if (cmd->actuate_target & PNP_ACTUATE_TARGET_PUMP) {
+		val = cmd->actuate_value ? 1 : 0;
+		pin_set(&gpio_sc, PORT_B, 13, val);
+	}
+}
 
 static void
 pnp_command_move(struct command *cmd)
@@ -904,8 +921,12 @@ pnp_command(char *line, int len)
 		printf("%s: value %.3f\n", __func__, value);
 
 		switch (letter) {
+		case 'M':
+			if (value == 800.0f)
+				cmd.type = CMD_TYPE_ACTUATE;
+			break;
 		case 'G':
-			if (value == 0.0f)
+			if (value == 0.0f) /* Linear move. */
 				cmd.type = CMD_TYPE_MOVE;
 			break;
 		case 'X':
@@ -928,6 +949,10 @@ pnp_command(char *line, int len)
 			cmd.h2 = value * 1000000;
 			cmd.h2_set = 1;
 			break;
+		case 'P':
+			cmd.actuate_target |= PNP_ACTUATE_TARGET_PUMP;
+			cmd.actuate_value = value;
+			break;
 		case 'F':
 			break;
 		default:
@@ -940,6 +965,9 @@ pnp_command(char *line, int len)
 	switch (cmd.type) {
 	case CMD_TYPE_MOVE:
 		pnp_command_move(&cmd);
+		break;
+	case CMD_TYPE_ACTUATE:
+		pnp_command_actuate(&cmd);
 		break;
 	};
 
