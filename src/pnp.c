@@ -45,9 +45,18 @@
 #define	dprintf(fmt, ...)
 #endif
 
-#define	PNP_MAX_X_NM		340000000	/* nanometers */
-#define	PNP_MAX_Y_NM		368000000	/* nanometers */
-#define	PNP_XYZ_STEP_NM		6250	/* Length of a step, nanometers */
+#define	PNP_MAX_X_NM		(340000000)	/* nanometers */
+#define	PNP_MAX_Y_NM		(368000000)	/* nanometers */
+
+/* XYZ Steppers */
+#define	PNP_XYZ_FULL_REVO_NM	(40000000)
+#define	PNP_XYZ_FULL_REVO_STEPS	(6400)
+#define	PNP_XYZ_STEP_NM		(PNP_XYZ_FULL_REVO_NM / PNP_XYZ_FULL_REVO_STEPS)
+
+/* Nozzle Rotation */
+#define	PNP_NR_FULL_REVO_DEG	(360000000)
+#define	PNP_NR_FULL_REVO_STEPS	(12800)
+#define	PNP_NR_STEP_DEG		(PNP_NR_FULL_REVO_DEG / PNP_NR_FULL_REVO_STEPS)
 
 struct move_task {
 	int new_pos;
@@ -604,7 +613,6 @@ pnp_motor_initialize(struct motor_state *motor, const char *name)
 	mdx_sem_init(&motor->worker_sem, 0);
 	mdx_sem_init(&motor->step_sem, 0);
 	motor->name = name;
-	motor->step_nm = PNP_XYZ_STEP_NM;
 }
 
 static int
@@ -632,6 +640,7 @@ pnp_initialize(void)
 	bzero(&pnp, sizeof(struct pnp_state));
 
 	pnp_motor_initialize(&pnp.motor_x, "X Motor");
+	pnp.motor_x.step_nm = PNP_XYZ_STEP_NM;
 	pnp.motor_x.set_direction = pnp_xset_direction;
 	pnp.motor_x.step = xstep;
 	pnp.motor_x.chanset = (1 << 0);
@@ -639,6 +648,7 @@ pnp_initialize(void)
 	mdx_sem_init(&pnp.motor_x.task.task_compl_sem, 0);
 
 	pnp_motor_initialize(&pnp.motor_y, "Y Motor");
+	pnp.motor_y.step_nm = PNP_XYZ_STEP_NM;
 	pnp.motor_y.set_direction = pnp_yset_direction;
 	pnp.motor_y.step = ystep;
 	pnp.motor_y.chanset = ((1 << 0) | (1 << 1));
@@ -646,6 +656,7 @@ pnp_initialize(void)
 	mdx_sem_init(&pnp.motor_y.task.task_compl_sem, 0);
 
 	pnp_motor_initialize(&pnp.motor_z, "Z Motor");
+	pnp.motor_z.step_nm = PNP_XYZ_STEP_NM;
 	pnp.motor_z.set_direction = pnp_zset_direction;
 	pnp.motor_z.step = zstep;
 	pnp.motor_z.chanset = (1 << 0);
@@ -653,7 +664,7 @@ pnp_initialize(void)
 	mdx_sem_init(&pnp.motor_z.task.task_compl_sem, 0);
 
 	pnp_motor_initialize(&pnp.motor_h1, "H1 Motor");
-	pnp.motor_h1.step_nm = 360000000 / 12800;
+	pnp.motor_h1.step_nm = PNP_NR_STEP_DEG;
 	pnp.motor_h1.set_direction = pnp_h1set_direction;
 	pnp.motor_h1.step = h1step;
 	pnp.motor_h1.chanset = (1 << 0);
@@ -661,7 +672,7 @@ pnp_initialize(void)
 	mdx_sem_init(&pnp.motor_h1.task.task_compl_sem, 0);
 
 	pnp_motor_initialize(&pnp.motor_h2, "H2 Motor");
-	pnp.motor_h2.step_nm = 360000000 / 12800;
+	pnp.motor_h2.step_nm = PNP_NR_STEP_DEG;
 	pnp.motor_h2.set_direction = pnp_h2set_direction;
 	pnp.motor_h2.step = h2step;
 	pnp.motor_h2.chanset = (1 << 0);
