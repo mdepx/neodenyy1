@@ -45,8 +45,8 @@
 #define	dprintf(fmt, ...)
 #endif
 
-#define	PNP_MAX_X_NM		360000000	/* nanometers */
-#define	PNP_MAX_Y_NM		360000000	/* nanometers */
+#define	PNP_MAX_X_NM		340000000	/* nanometers */
+#define	PNP_MAX_Y_NM		368000000	/* nanometers */
 #define	PNP_XYZ_STEP_NM		6250	/* Length of a step, nanometers */
 
 struct move_task {
