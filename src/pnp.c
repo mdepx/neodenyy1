@@ -424,7 +424,7 @@ pnp_move_z(int new_pos)
 }
 
 static void
-pnp_move_head(int head, int new_pos)
+pnp_move_head_nonblock(int head, int new_pos)
 {
 	struct motor_state *motor;
 	struct move_task *task;
@@ -447,8 +447,22 @@ pnp_move_head(int head, int new_pos)
 	task->steps = abs(delta) / motor->step_nm;
 	task->speed = 100;
 
+	printf("%s: making %d steps\n", __func__, task->steps);
+
 	motor->set_direction(task->dir);
 	mdx_sem_post(&motor->worker_sem);
+
+}
+
+static void
+pnp_move_head(int head, int new_pos)
+{
+	struct motor_state *motor;
+
+	motor = head == 1 ? &pnp.motor_h1 : &pnp.motor_h2;
+
+	pnp_move_head_nonblock(head, new_pos);
+
 	mdx_sem_wait(&motor->task.task_compl_sem);
 
 	dprintf("%s: head%d new_pos %d\n", __func__, head, motor->pos);
@@ -475,19 +489,22 @@ pnp_move_home_motor(struct motor_state *motor)
 			panic("still at home");
 	}
 
+	printf("%s is trying to reach home\n", motor->name);
 	/* Try to reach home. */
 	task->steps = PNP_MAX_Y_NM / motor->step_nm;
 	task->check_home = 1;
-	task->speed = 30;
+	task->speed = 20;
 	task->speed_control = 0;
 	motor->set_direction(0);
 	mdx_sem_post(&motor->worker_sem);
 	mdx_sem_wait(&task->task_compl_sem);
 
+	printf("%s is going into home for 1mm\n", motor->name);
+
 	/* Now go into home for 1 mm. */
 	task->steps = 1000000 / motor->step_nm;
 	task->check_home = 0;
-	task->speed = 15;
+	task->speed = 5;
 	task->speed_control = 0;
 	motor->set_direction(0);
 	mdx_sem_post(&motor->worker_sem);
@@ -636,6 +653,7 @@ pnp_initialize(void)
 	mdx_sem_init(&pnp.motor_z.task.task_compl_sem, 0);
 
 	pnp_motor_initialize(&pnp.motor_h1, "H1 Motor");
+	pnp.motor_h1.step_nm = 360000000 / 12800;
 	pnp.motor_h1.set_direction = pnp_h1set_direction;
 	pnp.motor_h1.step = h1step;
 	pnp.motor_h1.chanset = (1 << 0);
@@ -643,6 +661,7 @@ pnp_initialize(void)
 	mdx_sem_init(&pnp.motor_h1.task.task_compl_sem, 0);
 
 	pnp_motor_initialize(&pnp.motor_h2, "H2 Motor");
+	pnp.motor_h2.step_nm = 360000000 / 12800;
 	pnp.motor_h2.set_direction = pnp_h2set_direction;
 	pnp.motor_h2.step = h2step;
 	pnp.motor_h2.chanset = (1 << 0);
@@ -700,21 +719,25 @@ pnp_test_heads(void)
 {
 	int i;
 
+	pnp_henable(1);
+
 	printf("starting moving head\n");
 	for (i = 0; i < 2; i++) {
-		pnp_henable(1);
 		pnp_move_head(1, 10000000);
 		pnp_move_head(2, 10000000);
-		pnp_henable(0);
 		mdx_usleep(500000);
 
-		pnp_henable(1);
 		pnp_move_head(1, -10000000);
 		pnp_move_head(2, -10000000);
-		pnp_henable(0);
+		mdx_usleep(500000);
+
+		pnp_move_head(1, 0);
+		pnp_move_head(2, 0);
 		mdx_usleep(500000);
 	}
 	printf("head moving done\n");
+
+	pnp_henable(0);
 }
 
 static void
@@ -724,7 +747,7 @@ pnp_move_random(void)
 	uint32_t new_y;
 	int i;
 
-	for (i = 0; i < 100; i++) {
+	for (i = 0; i < 2; i++) {
 		new_x = board_get_random() % PNP_MAX_X_NM;
 		new_y = board_get_random() % PNP_MAX_Y_NM;
 		printf("%d: moving to %u %u\n", i, new_x, new_y);
@@ -781,7 +804,7 @@ struct command {
 static void
 pnp_command_move(struct command *cmd)
 {
-	uint32_t x, y, z;
+	uint32_t x, y, z, h1, h2;
 
 	if (cmd->x_set) {
 		x = cmd->x;
@@ -799,6 +822,22 @@ pnp_command_move(struct command *cmd)
 		mover(&pnp.motor_y, y);
 	}
 
+	if (cmd->h1_set) {
+		h1 = cmd->h1;
+		printf("moving H1 to %d\n", h1);
+		pnp_move_head_nonblock(1, h1);
+	}
+
+	if (cmd->h2_set) {
+		h2 = cmd->h2;
+		printf("moving H2 to %d\n", h2);
+		pnp_move_head_nonblock(2, h2);
+	}
+
+	if (cmd->h1_set)
+		mdx_sem_wait(&pnp.motor_h1.task.task_compl_sem);
+	if (cmd->h2_set)
+		mdx_sem_wait(&pnp.motor_h2.task.task_compl_sem);
 	if (cmd->x_set)
 		mdx_sem_wait(&pnp.motor_x.task.task_compl_sem);
 	if (cmd->y_set)
@@ -955,12 +994,12 @@ pnp_test(void)
 
 	pnp_initialize();
 	pnp_test_heads();
+	pnp_henable(1);
 	error = pnp_move_home();
 	if (error)
 		return (error);
 
-	if (1 == 0)
-		pnp_move_random();
+	pnp_move_random();
 	pnp_mainloop();
 
 	pnp_deinitialize();
