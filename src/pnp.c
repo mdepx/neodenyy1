@@ -800,6 +800,7 @@ struct command {
 	int type;
 #define	CMD_TYPE_MOVE		1
 #define	CMD_TYPE_ACTUATE	2
+#define	CMD_TYPE_SENSOR_READ	3
 
 	int x;
 	int y;
@@ -817,7 +818,19 @@ struct command {
 #define	PNP_ACTUATE_TARGET_AVAC1	2
 #define	PNP_ACTUATE_TARGET_AVAC2	3
 	int actuate_value;
+
+	int sensor_read_target;
 };
+
+static void
+pnp_command_sensor_read(struct command *cmd)
+{
+
+	if (cmd->sensor_read_target == 1)
+		printf("ok V:1.0\n");
+	else if (cmd->sensor_read_target == 2)
+		printf("ok W:1.1\n");
+}
 
 static void
 pnp_command_actuate(struct command *cmd)
@@ -942,6 +955,8 @@ pnp_command(char *line, int len)
 		case 'M':
 			if (value == 800.0f)
 				cmd.type = CMD_TYPE_ACTUATE;
+			else if (value == 105.0f)
+				cmd.type = CMD_TYPE_SENSOR_READ;
 			break;
 		case 'G':
 			if (value == 0.0f) /* Linear move. */
@@ -981,6 +996,10 @@ pnp_command(char *line, int len)
 			cmd.actuate_target |= PNP_ACTUATE_TARGET_AVAC2;
 			cmd.actuate_value = value;
 			break;
+		case 'N':
+			/* Air vac Sensors */
+			cmd.sensor_read_target = value;
+			break;
 		case 'F':
 			break;
 		default:
@@ -996,6 +1015,9 @@ pnp_command(char *line, int len)
 		break;
 	case CMD_TYPE_ACTUATE:
 		pnp_command_actuate(&cmd);
+		break;
+	case CMD_TYPE_SENSOR_READ:
+		pnp_command_sensor_read(&cmd);
 		break;
 	};
 
@@ -1061,7 +1083,9 @@ pnp_test(void)
 
 	pnp_initialize();
 	pnp_test_heads();
-	pnp_henable(1);
+
+	//pnp_henable(1);
+
 	error = pnp_move_home();
 	if (error)
 		return (error);
