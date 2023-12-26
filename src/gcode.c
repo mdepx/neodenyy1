@@ -45,31 +45,12 @@
 #define	dprintf(fmt, ...)
 #endif
 
-#define	MAX_BUF_SIZE	4096
-#define	MAX_GCODE_LEN	256
+#define	MAX_DMA_BUF_SIZE	4096
+#define	MAX_GCODE_LEN		256
 
-static uint8_t dma_buffer[MAX_BUF_SIZE];
+static uint8_t dma_buffer[MAX_DMA_BUF_SIZE];
 static uint8_t cmd_buffer[MAX_GCODE_LEN];
 static int cmd_buffer_ptr;
-
-static void
-pnp_dmarecv_init(void)
-{
-	struct stm32f4_dma_conf conf;
-
-	bzero(&conf, sizeof(struct stm32f4_dma_conf));
-	conf.mem0 = (uintptr_t)dma_buffer;
-	conf.sid = 2;
-	conf.periph_addr = USART1_BASE + USART_DR;
-	conf.dir = 0;
-	conf.channel = 4;
-	conf.circ = 1;
-	conf.psize = 8;
-	conf.nbytes = MAX_BUF_SIZE;
-
-	stm32f4_dma_setup(&dma2_sc, &conf);
-	stm32f4_dma_control(&dma2_sc, 2, 1);
-}
 
 static void
 pnp_command_sensor_read(struct command *cmd)
@@ -249,6 +230,25 @@ pnp_process_data(int ptr, int len)
 	}
 }
 
+static void
+pnp_dmarecv_init(void)
+{
+	struct stm32f4_dma_conf conf;
+
+	bzero(&conf, sizeof(struct stm32f4_dma_conf));
+	conf.mem0 = (uintptr_t)dma_buffer;
+	conf.sid = 2;
+	conf.periph_addr = USART1_BASE + USART_DR;
+	conf.dir = 0;
+	conf.channel = 4;
+	conf.circ = 1;
+	conf.psize = 8;
+	conf.nbytes = MAX_DMA_BUF_SIZE;
+
+	stm32f4_dma_setup(&dma2_sc, &conf);
+	stm32f4_dma_control(&dma2_sc, 2, 1);
+}
+
 int
 pnp_mainloop(void)
 {
@@ -263,14 +263,14 @@ pnp_mainloop(void)
 	/* Periodically poll for a new data. */
 	while (1) {
 		cnt = stm32f4_dma_getcnt(&dma2_sc, 2);
-		cnt = MAX_BUF_SIZE - cnt;
+		cnt = MAX_DMA_BUF_SIZE - cnt;
 
 		if (cnt > ptr) {
 			pnp_process_data(ptr, (cnt - ptr));
 			ptr = cnt;
 		} else if (cnt < ptr) {
 			/* Buffer wrapped. */
-			pnp_process_data(ptr, MAX_BUF_SIZE - ptr);
+			pnp_process_data(ptr, MAX_DMA_BUF_SIZE - ptr);
 			pnp_process_data(0, cnt);
 			ptr = cnt;
 		}
