@@ -171,12 +171,12 @@ pnp_command(char *line, int len)
 			cmd.actuate_target |= PNP_ACTUATE_TARGET_PUMP;
 			cmd.actuate_value = value;
 			break;
-		case 'A':
+		case 'V':
 			/* Air vacuum 1 */
 			cmd.actuate_target |= PNP_ACTUATE_TARGET_AVAC1;
 			cmd.actuate_value = value;
 			break;
-		case 'V':
+		case 'W':
 			/* Air vacuum 2 */
 			cmd.actuate_target |= PNP_ACTUATE_TARGET_AVAC2;
 			cmd.actuate_value = value;
