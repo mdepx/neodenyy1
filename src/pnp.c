@@ -606,6 +606,55 @@ pnp_move_home(void)
 	return (0);
 }
 
+void
+pnp_command_move(struct command *cmd)
+{
+	uint32_t x, y, z, h1, h2;
+
+	if (cmd->x_set) {
+		x = cmd->x;
+		if (x > PNP_MAX_X_NM)
+			x = PNP_MAX_X_NM;
+		printf("moving X to %d\n", x);
+		mover(&pnp.motor_x, x);
+	}
+
+	if (cmd->y_set) {
+		y = cmd->y;
+		if (y > PNP_MAX_Y_NM)
+			y = PNP_MAX_Y_NM;
+		printf("moving Y to %d\n", y);
+		mover(&pnp.motor_y, y);
+	}
+
+	if (cmd->h1_set) {
+		h1 = cmd->h1;
+		printf("moving H1 to %d\n", h1);
+		pnp_move_head_nonblock(1, h1);
+	}
+
+	if (cmd->h2_set) {
+		h2 = cmd->h2;
+		printf("moving H2 to %d\n", h2);
+		pnp_move_head_nonblock(2, h2);
+	}
+
+	if (cmd->h1_set)
+		mdx_sem_wait(&pnp.motor_h1.task.task_compl_sem);
+	if (cmd->h2_set)
+		mdx_sem_wait(&pnp.motor_h2.task.task_compl_sem);
+	if (cmd->x_set)
+		mdx_sem_wait(&pnp.motor_x.task.task_compl_sem);
+	if (cmd->y_set)
+		mdx_sem_wait(&pnp.motor_y.task.task_compl_sem);
+
+	if (cmd->z_set) {
+		z = cmd->z;
+		printf("moving Z to %d\n", z);
+		pnp_move_z(z);
+	}
+}
+
 static void
 pnp_motor_initialize(struct motor_state *motor, const char *name)
 {
@@ -771,316 +820,6 @@ pnp_move_random(void)
 	pnp_move_xy(0, 0);
 }
 
-#define	MAX_BUF_SIZE	4096
-uint8_t buffer[MAX_BUF_SIZE];
-uint8_t cmd_buffer[64];
-int cmd_buffer_ptr;
-
-static void
-pnp_dmarecv_init(void)
-{
-	struct stm32f4_dma_conf conf;
-
-	bzero(&conf, sizeof(struct stm32f4_dma_conf));
-	conf.mem0 = (uintptr_t)buffer;
-	conf.sid = 2;
-	conf.periph_addr = USART1_BASE + USART_DR;
-	conf.dir = 0;
-	conf.channel = 4;
-	conf.circ = 1;
-	conf.psize = 8;
-	conf.nbytes = MAX_BUF_SIZE;
-
-	stm32f4_dma_setup(&dma2_sc, &conf);
-	stm32f4_dma_control(&dma2_sc, 2, 1);
-}
-
-
-struct command {
-	int type;
-#define	CMD_TYPE_MOVE		1
-#define	CMD_TYPE_ACTUATE	2
-#define	CMD_TYPE_SENSOR_READ	3
-
-	int x;
-	int y;
-	int z;
-	int h1;
-	int h2;
-	int x_set;
-	int y_set;
-	int z_set;
-	int h1_set;
-	int h2_set;
-
-	int actuate_target;
-#define	PNP_ACTUATE_TARGET_PUMP		1
-#define	PNP_ACTUATE_TARGET_AVAC1	2
-#define	PNP_ACTUATE_TARGET_AVAC2	3
-	int actuate_value;
-
-	int sensor_read_target;
-};
-
-static void
-pnp_command_sensor_read(struct command *cmd)
-{
-	int val;
-
-	if (cmd->sensor_read_target == 1) {
-		val = pin_get(&gpio_sc, PORT_B, 3) ? 0 : 1;
-		printf("ok V:%d\n", val);
-
-	} else if (cmd->sensor_read_target == 2) {
-		val = pin_get(&gpio_sc, PORT_D, 4) ? 0 : 1;
-		printf("ok W:%d\n", val);
-	}
-}
-
-static void
-pnp_command_actuate(struct command *cmd)
-{
-	int val;
-
-	val = cmd->actuate_value ? 1 : 0;
-
-	switch (cmd->actuate_target) {
-	case PNP_ACTUATE_TARGET_PUMP:
-		pin_set(&gpio_sc, PORT_B, 13, val);
-		break;
-	case PNP_ACTUATE_TARGET_AVAC1:
-		pin_set(&gpio_sc, PORT_E, 2, val);
-		break;
-	case PNP_ACTUATE_TARGET_AVAC2:
-		pin_set(&gpio_sc, PORT_E, 1, val);
-		break;
-	default:
-		break;
-	}
-}
-
-static void
-pnp_command_move(struct command *cmd)
-{
-	uint32_t x, y, z, h1, h2;
-
-	if (cmd->x_set) {
-		x = cmd->x;
-		if (x > PNP_MAX_X_NM)
-			x = PNP_MAX_X_NM;
-		printf("moving X to %d\n", x);
-		mover(&pnp.motor_x, x);
-	}
-
-	if (cmd->y_set) {
-		y = cmd->y;
-		if (y > PNP_MAX_Y_NM)
-			y = PNP_MAX_Y_NM;
-		printf("moving Y to %d\n", y);
-		mover(&pnp.motor_y, y);
-	}
-
-	if (cmd->h1_set) {
-		h1 = cmd->h1;
-		printf("moving H1 to %d\n", h1);
-		pnp_move_head_nonblock(1, h1);
-	}
-
-	if (cmd->h2_set) {
-		h2 = cmd->h2;
-		printf("moving H2 to %d\n", h2);
-		pnp_move_head_nonblock(2, h2);
-	}
-
-	if (cmd->h1_set)
-		mdx_sem_wait(&pnp.motor_h1.task.task_compl_sem);
-	if (cmd->h2_set)
-		mdx_sem_wait(&pnp.motor_h2.task.task_compl_sem);
-	if (cmd->x_set)
-		mdx_sem_wait(&pnp.motor_x.task.task_compl_sem);
-	if (cmd->y_set)
-		mdx_sem_wait(&pnp.motor_y.task.task_compl_sem);
-
-	if (cmd->z_set) {
-		z = cmd->z;
-		printf("moving Z to %d\n", z);
-		pnp_move_z(z);
-	}
-}
-
-static void
-pnp_command(char *line, int len)
-{
-	struct command cmd;
-	uint8_t letter;
-	char *endp;
-	char *end;
-	float value;
-
-#if 1
-	int i;
-	printf("GCODE: ");
-	for (i = 0; i < len; i++)
-		printf("%c", line[i]);
-	printf("\n");
-#endif
-
-	bzero(&cmd, sizeof(struct command));
-
-	end = line + len;
-	while (line < end) {
-		letter = *line;
-
-		/* Skip spaces. */
-		if (letter == ' ') {
-			line += 1;
-			continue;
-		}
-
-		if (letter < 'A' || letter > 'Z') {
-			printf("Fatal error.\n");
-			break;
-		}
-
-		/* Skip letter. */
-		line += 1;
-
-		/* Ensure we are dealing with digit, + or -. */
-		if ((*line < '0' || *line > '9') &&
-		    (*line != '+') &&
-		    (*line != '-'))
-			break;
-
-		value = strtof(line, &endp);
-		line = endp;
-
-		printf("%s: value %.3f\n", __func__, value);
-
-		switch (letter) {
-		case 'M':
-			if (value == 800.0f)
-				cmd.type = CMD_TYPE_ACTUATE;
-			else if (value == 105.0f)
-				cmd.type = CMD_TYPE_SENSOR_READ;
-			break;
-		case 'G':
-			if (value == 0.0f) /* Linear move. */
-				cmd.type = CMD_TYPE_MOVE;
-			break;
-		case 'X':
-			cmd.x = value * 1000000;
-			cmd.x_set = 1;
-			break;
-		case 'Y':
-			cmd.y = value * 1000000;
-			cmd.y_set = 1;
-			break;
-		case 'Z':
-			cmd.z = value * 1000000;
-			cmd.z_set = 1;
-			break;
-		case 'I':
-			cmd.h1 = value * 1000000;
-			cmd.h1_set = 1;
-			break;
-		case 'J':
-			cmd.h2 = value * 1000000;
-			cmd.h2_set = 1;
-			break;
-		case 'P':
-			cmd.actuate_target |= PNP_ACTUATE_TARGET_PUMP;
-			cmd.actuate_value = value;
-			break;
-		case 'A':
-			/* Air vacuum 1 */
-			cmd.actuate_target |= PNP_ACTUATE_TARGET_AVAC1;
-			cmd.actuate_value = value;
-			break;
-		case 'V':
-			/* Air vacuum 2 */
-			cmd.actuate_target |= PNP_ACTUATE_TARGET_AVAC2;
-			cmd.actuate_value = value;
-			break;
-		case 'N':
-			/* Air vac Sensors */
-			cmd.sensor_read_target = value;
-			break;
-		case 'F':
-			break;
-		default:
-			break;
-		}
-	}
-
-	printf("OK\n");
-
-	switch (cmd.type) {
-	case CMD_TYPE_MOVE:
-		pnp_command_move(&cmd);
-		break;
-	case CMD_TYPE_ACTUATE:
-		pnp_command_actuate(&cmd);
-		break;
-	case CMD_TYPE_SENSOR_READ:
-		pnp_command_sensor_read(&cmd);
-		break;
-	};
-
-	printf("COMPLETE\n");
-}
-
-static void
-pnp_process_data(int ptr, int len)
-{
-	uint8_t *start;
-	uint8_t ch;
-	int i;
-
-	start = &buffer[ptr];
-	for (i = 0; i < len; i++) {
-		ch = start[i];
-		//printf("ch %d\n", ch);
-		cmd_buffer[cmd_buffer_ptr] = ch;
-		if (ch == '\n') { /* LF */
-			pnp_command(cmd_buffer, cmd_buffer_ptr);
-			cmd_buffer_ptr = 0;
-		} else
-			cmd_buffer_ptr += 1;
-	}
-}
-
-static int
-pnp_mainloop(void)
-{
-	uint32_t cnt;
-	int ptr;
-
-	ptr = 0;
-	cmd_buffer_ptr = 0;
-
-	pnp_dmarecv_init();
-
-	/* Periodically poll for a new data. */
-	while (1) {
-		cnt = stm32f4_dma_getcnt(&dma2_sc, 2);
-		cnt = MAX_BUF_SIZE - cnt;
-
-		if (cnt > ptr) {
-			pnp_process_data(ptr, (cnt - ptr));
-			ptr = cnt;
-		} else if (cnt < ptr) {
-			/* Buffer wrapped. */
-			pnp_process_data(ptr, MAX_BUF_SIZE - ptr);
-			pnp_process_data(0, cnt);
-			ptr = cnt;
-		}
-
-		mdx_usleep(10000);
-	}
-
-	return (0);
-}
-
 int
 pnp_test(void)
 {
@@ -1088,16 +827,12 @@ pnp_test(void)
 
 	pnp_initialize();
 	pnp_test_heads();
-
 	//pnp_henable(1);
-
 	error = pnp_move_home();
 	if (error)
 		return (error);
-
 	pnp_move_random();
 	pnp_mainloop();
-
 	pnp_deinitialize();
 
 	return (0);
