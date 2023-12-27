@@ -31,6 +31,8 @@
 #include <sys/sem.h>
 #include <sys/thread.h>
 
+#include <lib/msun/src/math.h>
+
 #include <arm/stm/stm32f4.h>
 
 #include "board.h"
@@ -48,12 +50,17 @@
 #define	PNP_MAX_X_NM		(340000000)	/* nanometers */
 #define	PNP_MAX_Y_NM		(368000000)	/* nanometers */
 
-/* XYZ Steppers */
-#define	PNP_XYZ_FULL_REVO_NM	(40000000)
-#define	PNP_XYZ_FULL_REVO_STEPS	(6400)
-#define	PNP_XYZ_STEP_NM		(PNP_XYZ_FULL_REVO_NM / PNP_XYZ_FULL_REVO_STEPS)
+/* XY steppers are in linear motion. */
+#define	PNP_XY_FULL_REVO_NM	(40000000)
+#define	PNP_XY_FULL_REVO_STEPS	(6400)
+#define	PNP_XY_STEP_NM		(PNP_XY_FULL_REVO_NM / PNP_XY_FULL_REVO_STEPS)
 
-/* Nozzle Rotation */
+/* Z stepper: we convert linear into rotational motion. */
+#define	PNP_Z_FULL_REVO_DEG	(360000000)
+#define	PNP_Z_FULL_REVO_STEPS	(12800)
+#define	PNP_Z_STEP_DEG		(PNP_Z_FULL_REVO_DEG / PNP_Z_FULL_REVO_STEPS)
+
+/* NR (Nozzle Rotation) steppers are in rotational motion. */
 #define	PNP_NR_FULL_REVO_DEG	(360000000)
 #define	PNP_NR_FULL_REVO_STEPS	(12800)
 #define	PNP_NR_STEP_DEG		(PNP_NR_FULL_REVO_DEG / PNP_NR_FULL_REVO_STEPS)
@@ -83,6 +90,8 @@ struct motor_state {
 	void (*step)(int chanset, int speed);
 	mdx_sem_t step_sem;
 	uint32_t step_nm;	/* Length of a step, nanometers */
+
+	int steps; /* Current offset from home. */
 };
 
 struct pnp_state {
@@ -342,10 +351,13 @@ pnp_worker_thread(void *arg)
 
 			motor->step(motor->chanset, speed);
 			mdx_sem_wait(&motor->step_sem);
-			if (task->dir == 1)
+			if (task->dir == 1) {
 				motor->pos += motor->step_nm;
-			else
+				motor->steps += 1;
+			} else {
 				motor->pos -= motor->step_nm;
+				motor->steps -= 1;
+			}
 		}
 
 		dprintf("%s: new pos %d\n", motor->name, motor->pos);
@@ -405,22 +417,41 @@ pnp_move_z(int new_pos)
 	struct motor_state *motor;
 	struct move_task *task;
 	int delta;
+	int cam_radius;
+
+	cam_radius = 14200000;
+
+	if (abs(new_pos) > cam_radius * 2) {
+		printf("%s: Can't move Z to %d\n", __func__, new_pos);
+		return (0);
+	}
 
 	motor = &pnp.motor_z;
 	task = &motor->task;
 	task->check_home = 0;
 	task->speed_control = 1;
-
 	task->new_pos = new_pos;
-	if (task->new_pos > motor->pos) {
+
+	uint32_t new_z;
+	int new_z_steps;
+
+	/* Convert new position from mm to degrees. */
+	new_z = trig_translate_z(abs(new_pos), cam_radius);
+	new_z_steps = new_z / motor->step_nm;
+	if (new_pos < 0)
+		new_z_steps *= -1;
+
+	printf("new_z %d steps %d\n", new_z, new_z_steps);
+
+	if (new_z_steps > motor->steps) {
 		task->dir = 1;
-		delta = task->new_pos - motor->pos;
+		delta = abs(new_z_steps - motor->steps);
 	} else {
 		task->dir = 0;
-		delta = motor->pos - task->new_pos;
+		delta = abs(motor->steps - new_z_steps);
 	}
 
-	task->steps = abs(delta) / motor->step_nm;
+	task->steps = delta;
 	task->speed = 100;
 
 	motor->set_direction(task->dir);
@@ -520,6 +551,7 @@ pnp_move_home_motor(struct motor_state *motor)
 	mdx_sem_wait(&task->task_compl_sem);
 
 	motor->pos = 0;
+	motor->steps = 0;
 	printf("%s home reached\n", motor->name);
 }
 
@@ -586,6 +618,7 @@ pnp_move_home_z(struct motor_state *motor)
 	mdx_sem_wait(&task->task_compl_sem);
 
 	motor->pos = 0;
+	motor->steps = 0;
 	printf("z home found\n");
 
 	return (0);
@@ -689,7 +722,7 @@ pnp_initialize(void)
 	bzero(&pnp, sizeof(struct pnp_state));
 
 	pnp_motor_initialize(&pnp.motor_x, "X Motor");
-	pnp.motor_x.step_nm = PNP_XYZ_STEP_NM;
+	pnp.motor_x.step_nm = PNP_XY_STEP_NM;
 	pnp.motor_x.set_direction = pnp_xset_direction;
 	pnp.motor_x.step = xstep;
 	pnp.motor_x.chanset = (1 << 0);
@@ -697,7 +730,7 @@ pnp_initialize(void)
 	mdx_sem_init(&pnp.motor_x.task.task_compl_sem, 0);
 
 	pnp_motor_initialize(&pnp.motor_y, "Y Motor");
-	pnp.motor_y.step_nm = PNP_XYZ_STEP_NM;
+	pnp.motor_y.step_nm = PNP_XY_STEP_NM;
 	pnp.motor_y.set_direction = pnp_yset_direction;
 	pnp.motor_y.step = ystep;
 	pnp.motor_y.chanset = ((1 << 0) | (1 << 1));
@@ -705,7 +738,7 @@ pnp_initialize(void)
 	mdx_sem_init(&pnp.motor_y.task.task_compl_sem, 0);
 
 	pnp_motor_initialize(&pnp.motor_z, "Z Motor");
-	pnp.motor_z.step_nm = PNP_XYZ_STEP_NM;
+	pnp.motor_z.step_nm = PNP_Z_STEP_DEG;
 	pnp.motor_z.set_direction = pnp_zset_direction;
 	pnp.motor_z.step = zstep;
 	pnp.motor_z.chanset = (1 << 0);
@@ -782,7 +815,7 @@ pnp_test_heads(void)
 	pnp_henable(1);
 
 	printf("starting moving head\n");
-	for (i = 0; i < 2; i++) {
+	for (i = 0; i < 1; i++) {
 		pnp_move_head(1, 10000000);
 		pnp_move_head(2, 10000000);
 		mdx_usleep(500000);
@@ -812,10 +845,13 @@ pnp_move_random(void)
 		new_y = board_get_random() % PNP_MAX_Y_NM;
 		printf("%d: moving to %u %u\n", i, new_x, new_y);
 		pnp_move_xy(new_x, new_y);
-		pnp_move_z(-20000000);
-		pnp_move_z(20000000);
+		pnp_move_z(-2000000);
+		pnp_move_z(2000000);
 		pnp_move_z(0);
 	}
+
+	//pnp_move_z(-31000000);
+	//pnp.motor_z.pos = 0;
 
 	pnp_move_xy(0, 0);
 }
@@ -823,7 +859,16 @@ pnp_move_random(void)
 int
 pnp_test(void)
 {
+	int cam_radius;
 	int error;
+	float j;
+
+	cam_radius = 15;
+
+	for (j = 0; j < 180; j += 1)
+		trig_translate_z(j * 1000000, cam_radius * 1000000);
+
+	//return (0);
 
 	pnp_initialize();
 	pnp_test_heads();

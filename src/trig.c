@@ -36,10 +36,10 @@
 #include "board.h"
 #include "pnp.h"
 
-#define	PNP_DEBUG
-#undef	PNP_DEBUG
+#define	TRIG_DEBUG
+#undef	TRIG_DEBUG
 
-#ifdef	PNP_DEBUG
+#ifdef	TRIG_DEBUG
 #define	dprintf(fmt, ...)	printf(fmt, ##__VA_ARGS__)
 #else
 #define	dprintf(fmt, ...)
@@ -50,33 +50,38 @@
 #define	RAD(x)	((M_PI / 180) * (x))
 
 /*
- * cam_radius and new_z are in mm.
+ * cam_radius and z are in mm.
  * return value is motor rotation degrees.
+ *
+ * Note: absolute z is expected as input.
  */
 int
-translate_z(float cam_radius, float new_z)
+trig_translate_z(float z0, float cam_radius)
 {
 	float val;
 	float deg;
+	float z;
+	int result;
+
+	z = abs(z0);
 
 	/* Can't rotate more than 180 deg. */
-	if (new_z > cam_radius * 2)
+	if (z > cam_radius * 2)
 		return (-1);
 
-	deg = 0;
+	val = (z - cam_radius) / cam_radius;
+	deg = 90 + DEG(asin(val));
 
-	if (new_z > cam_radius) {
-		deg += 90;
-		val = (new_z - cam_radius) / cam_radius;
-	} else
-		val = (new_z / cam_radius);
-
-	deg += DEG(asin(val));
-
-	/* Covert to nano. */
+	/* Convert to nano. */
 	deg *= 1000000;
 
-	printf("new_z %f mm, deg %f\n", new_z, deg);
+	/* Check if negative. */
+	if (z0 < 0)
+		deg *= -1;
 
-	return (0);
+	result = deg;
+
+	printf("%s: z %f mm, deg %d\n", __func__, z, result);
+
+	return (result);
 }
