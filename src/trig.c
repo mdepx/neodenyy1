@@ -24,45 +24,59 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _SRC_PNP_H_
-#define	_SRC_PNP_H_
+#include <sys/cdefs.h>
+#include <sys/console.h>
+#include <sys/systm.h>
+#include <sys/malloc.h>
+#include <sys/sem.h>
+#include <sys/thread.h>
 
-struct command {
-	int type;
-#define	CMD_TYPE_MOVE		1
-#define	CMD_TYPE_ACTUATE	2
-#define	CMD_TYPE_SENSOR_READ	3
+#include <lib/msun/src/math.h>
 
-	int x;
-	int y;
-	int z;
-	int h1;
-	int h2;
-	int x_set;
-	int y_set;
-	int z_set;
-	int h1_set;
-	int h2_set;
+#include "board.h"
+#include "pnp.h"
 
-	int actuate_target;
-#define	PNP_ACTUATE_TARGET_PUMP		1
-#define	PNP_ACTUATE_TARGET_AVAC1	2
-#define	PNP_ACTUATE_TARGET_AVAC2	3
-	int actuate_value;
+#define	PNP_DEBUG
+#undef	PNP_DEBUG
 
-	int sensor_read_target;
-};
+#ifdef	PNP_DEBUG
+#define	dprintf(fmt, ...)	printf(fmt, ##__VA_ARGS__)
+#else
+#define	dprintf(fmt, ...)
+#endif
 
-void pnp_pwm_x_intr(void *arg, int irq);
-void pnp_pwm_y_intr(void *arg, int irq);
-void pnp_pwm_z_intr(void *arg, int irq);
-void pnp_pwm_h1_intr(void *arg, int irq);
-void pnp_pwm_h2_intr(void *arg, int irq);
+#define	M_PI	3.14159265358979323846
+#define	DEG(x)	((180 / M_PI) * (x))
+#define	RAD(x)	((M_PI / 180) * (x))
 
-int pnp_test(void);
-void pnp_command_move(struct command *cmd);
-int pnp_mainloop(void);
+/*
+ * cam_radius and new_z are in mm.
+ * return value is motor rotation degrees.
+ */
+int
+translate_z(float cam_radius, float new_z)
+{
+	float val;
+	float deg;
 
-int translate_z(float cam_radius, float new_z);
+	/* Can't rotate more than 180 deg. */
+	if (new_z > cam_radius * 2)
+		return (-1);
 
-#endif /* !_SRC_PNP_H_ */
+	deg = 0;
+
+	if (new_z > cam_radius) {
+		deg += 90;
+		val = (new_z - cam_radius) / cam_radius;
+	} else
+		val = (new_z / cam_radius);
+
+	deg += DEG(asin(val));
+
+	/* Covert to nano. */
+	deg *= 1000000;
+
+	printf("new_z %f mm, deg %f\n", new_z, deg);
+
+	return (0);
+}
