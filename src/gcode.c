@@ -88,16 +88,21 @@ pnp_command_actuate(struct command *cmd)
 	case PNP_ACTUATE_TARGET_NEEDLE:
 		cur = pin_get(&gpio_sc, PORT_B, 5);
 		if (cur && val) {
-			/* Already set? */
+			printf("ERR: needle already set\n");
 		} else if (!cur && !val) {
-			/* Already cleared? */
+			printf("ERR: needle already cleared\n");
 		} else {
 			pin_set(&gpio_sc, PORT_E, 0, val);
-			while (1) {
-				cur = pin_get(&gpio_sc, PORT_B, 5);
-				if (cur == val)
-					break;
-				mdx_usleep(10000);
+			mdx_usleep(150000);
+
+			if (val == 0) {
+				/* Ensure it is not set. */
+				do {
+					cur = pin_get(&gpio_sc, PORT_B, 5);
+					if (cur == 0)
+						break;
+					mdx_usleep(25000);
+				} while (1);
 			}
 		}
 
@@ -105,7 +110,7 @@ pnp_command_actuate(struct command *cmd)
 	case PNP_ACTUATE_TARGET_PEEL:
 		pin_set(&gpio_sc, PORT_B, 12, val);
 		if (val)
-			mdx_usleep(500000);
+			mdx_usleep(250000);
 		break;
 	default:
 		break;
