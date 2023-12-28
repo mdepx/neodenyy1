@@ -69,6 +69,7 @@ pnp_command_sensor_read(struct command *cmd)
 static void
 pnp_command_actuate(struct command *cmd)
 {
+	int cur;
 	int val;
 
 	val = cmd->actuate_value ? 1 : 0;
@@ -85,10 +86,26 @@ pnp_command_actuate(struct command *cmd)
 		pin_set(&gpio_sc, PORT_E, 1, val);
 		break;
 	case PNP_ACTUATE_TARGET_NEEDLE:
-		pin_set(&gpio_sc, PORT_E, 0, val);
+		cur = pin_get(&gpio_sc, PORT_B, 5);
+		if (cur && val) {
+			/* Already set? */
+		} else if (!cur && !val) {
+			/* Already cleared? */
+		} else {
+			pin_set(&gpio_sc, PORT_E, 0, val);
+			while (1) {
+				cur = pin_get(&gpio_sc, PORT_B, 5);
+				if (cur == val)
+					break;
+				mdx_usleep(10000);
+			}
+		}
+
 		break;
 	case PNP_ACTUATE_TARGET_PEEL:
 		pin_set(&gpio_sc, PORT_B, 12, val);
+		if (val)
+			mdx_usleep(500000);
 		break;
 	default:
 		break;
