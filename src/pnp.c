@@ -203,7 +203,7 @@ pnp_zenable(int enable)
 	mdx_usleep(10000);
 }
 
-static void
+void
 pnp_henable(int enable)
 {
 
@@ -872,7 +872,6 @@ pnp_test(void)
 
 	pnp_initialize();
 	pnp_test_heads();
-	//pnp_henable(1);
 	error = pnp_move_home();
 	if (error)
 		return (error);

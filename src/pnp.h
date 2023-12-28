@@ -48,6 +48,8 @@ struct command {
 #define	PNP_ACTUATE_TARGET_PUMP		1
 #define	PNP_ACTUATE_TARGET_AVAC1	2
 #define	PNP_ACTUATE_TARGET_AVAC2	3
+#define	PNP_ACTUATE_TARGET_NEEDLE	4
+#define	PNP_ACTUATE_TARGET_PEEL		5
 	int actuate_value;
 
 	int sensor_read_target;
@@ -64,5 +66,6 @@ void pnp_command_move(struct command *cmd);
 int pnp_mainloop(void);
 
 int trig_translate_z(float z, float cam_radius);
+void pnp_henable(int enable);
 
 #endif /* !_SRC_PNP_H_ */

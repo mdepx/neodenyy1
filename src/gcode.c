@@ -75,6 +75,7 @@ pnp_command_actuate(struct command *cmd)
 
 	switch (cmd->actuate_target) {
 	case PNP_ACTUATE_TARGET_PUMP:
+		pnp_henable(val);
 		pin_set(&gpio_sc, PORT_B, 13, val);
 		break;
 	case PNP_ACTUATE_TARGET_AVAC1:
@@ -82,6 +83,12 @@ pnp_command_actuate(struct command *cmd)
 		break;
 	case PNP_ACTUATE_TARGET_AVAC2:
 		pin_set(&gpio_sc, PORT_E, 1, val);
+		break;
+	case PNP_ACTUATE_TARGET_NEEDLE:
+		pin_set(&gpio_sc, PORT_E, 0, val);
+		break;
+	case PNP_ACTUATE_TARGET_PEEL:
+		pin_set(&gpio_sc, PORT_B, 12, val);
 		break;
 	default:
 		break;
@@ -184,6 +191,16 @@ pnp_command(char *line, int len)
 		case 'N':
 			/* Air vac sensors read. */
 			cmd.sensor_read_target = value;
+			break;
+		case 'D':
+			/* Needle */
+			cmd.actuate_target |= PNP_ACTUATE_TARGET_NEEDLE;
+			cmd.actuate_value = value;
+			break;
+		case 'O':
+			/* Peel */
+			cmd.actuate_target |= PNP_ACTUATE_TARGET_PEEL;
+			cmd.actuate_value = value;
 			break;
 		case 'F':
 			break;
