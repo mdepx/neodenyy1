@@ -60,8 +60,9 @@ static const struct gpio_pin neodenyy1_pins[] = {
 	{ PORT_C, 1, MODE_INP, 0, PULLDOWN }, /* SensorR */
 	{ PORT_C, 6, MODE_INP, 0, PULLDOWN }, /* SensorL head */
 	{ PORT_C, 7, MODE_INP, 0, PULLDOWN }, /* SensorL */
+
 	/* Z Motor Home. */
-	{ PORT_B, 4, MODE_INP, 0, FLOAT }, /* SZ */
+	{ PORT_B, 4, MODE_INP, 0, PULLDOWN }, /* SZ */
 
 	/* Y Motor R */
 	{ PORT_C,  0, MODE_OUT, 0, PULLDOWN }, /* ST */
