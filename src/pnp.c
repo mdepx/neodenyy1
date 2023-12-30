@@ -55,7 +55,7 @@
 #define	PNP_XY_FULL_REVO_STEPS	(6400)
 #define	PNP_XY_STEP_NM		(PNP_XY_FULL_REVO_NM / PNP_XY_FULL_REVO_STEPS)
 
-/* Z stepper: we convert linear into rotational motion. */
+/* Z stepper: we translate linear into rotational motion. */
 #define	PNP_Z_FULL_REVO_DEG	(360000000)
 #define	PNP_Z_FULL_REVO_STEPS	(12800)
 #define	PNP_Z_STEP_DEG		(PNP_Z_FULL_REVO_DEG / PNP_Z_FULL_REVO_STEPS)
