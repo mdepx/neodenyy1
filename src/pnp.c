@@ -845,8 +845,8 @@ pnp_move_random(void)
 		new_y = board_get_random() % PNP_MAX_Y_NM;
 		printf("%d: moving to %u %u\n", i, new_x, new_y);
 		pnp_move_xy(new_x, new_y);
-		pnp_move_z(-2000000);
-		pnp_move_z(2000000);
+		pnp_move_z(-10000000);
+		pnp_move_z(10000000);
 		pnp_move_z(0);
 	}
 
