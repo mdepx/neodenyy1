@@ -419,7 +419,7 @@ pnp_move_z(int new_pos)
 	int delta;
 	int cam_radius;
 
-	cam_radius = 14200000;
+	cam_radius = 15000000;
 
 	if (abs(new_pos) > cam_radius * 2) {
 		printf("%s: Can't move Z to %d\n", __func__, new_pos);
@@ -856,6 +856,27 @@ pnp_move_random(void)
 	pnp_move_xy(0, 0);
 }
 
+static int
+pnp_test_z(void)
+{
+	int error;
+	int i;
+
+	error = pnp_move_home_z(&pnp.motor_z);
+	if (error)
+		return (error);
+
+	while (1) {
+		for (i = 6; i < 17; i++) {
+			pnp_move_z(i * 1000000);
+			mdx_usleep(500000);
+			mdx_usleep(500000);
+		}
+	}
+
+	return (0);
+}
+
 int
 pnp_test(void)
 {
@@ -863,15 +884,17 @@ pnp_test(void)
 	int error;
 	float j;
 
-	cam_radius = 15;
+	cam_radius = 15000000;
 
 	for (j = 0; j < 180; j += 1)
-		trig_translate_z(j * 1000000, cam_radius * 1000000);
+		trig_translate_z(j * 1000000, cam_radius);
 
 	//return (0);
 
 	pnp_initialize();
 	pnp_test_heads();
+	if (1 == 0)
+		pnp_test_z();
 	error = pnp_move_home();
 	if (error)
 		return (error);
