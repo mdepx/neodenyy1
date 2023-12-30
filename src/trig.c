@@ -81,7 +81,7 @@ trig_translate_z(float z0, float cam_radius)
 
 	result = deg;
 
-	printf("%s: z %f mm, deg %d\n", __func__, z, result);
+	dprintf("%s: z %f mm, deg %d\n", __func__, z, result);
 
 	return (result);
 }
