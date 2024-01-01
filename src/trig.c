@@ -63,9 +63,10 @@ trig_translate_z(float z0, float cam_radius, int *result)
 
 	z = abs(z0);
 
-	/* Can't rotate for more than 180 deg. */
-	if (z > cam_radius * 2)
+	if (z > cam_radius * 2) {
+		printf("%s: Can't rotate Z for more than 180 deg.\n", __func__);
 		return (-1);
+	}
 
 	val = z / cam_radius - 1;
 	deg = 90 + DEG(asin(val));

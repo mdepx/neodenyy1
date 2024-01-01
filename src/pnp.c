@@ -423,17 +423,9 @@ pnp_move_z(int new_pos)
 	struct motor_state *motor;
 	struct move_task *task;
 	uint32_t delta;
-	int cam_radius;
 	int new_z_steps;
 	int new_z;
 	int error;
-
-	cam_radius = CAM_RADIUS;
-
-	if (abs(new_pos) > cam_radius * 2) {
-		printf("%s: Can't move Z to %d\n", __func__, new_pos);
-		return (0);
-	}
 
 	motor = &pnp.motor_z;
 	task = &motor->task;
