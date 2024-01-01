@@ -430,7 +430,7 @@ pnp_move_xy(uint32_t new_pos_x, uint32_t new_pos_y)
 }
 
 static int
-pnp_move(struct motor_state *motor, int new_pos)
+pnp_move_nonblock(struct motor_state *motor, int new_pos)
 {
 	struct move_task *task;
 	uint32_t delta;
@@ -475,9 +475,22 @@ pnp_move(struct motor_state *motor, int new_pos)
 
 	motor->set_direction(task->dir);
 	mdx_sem_post(&motor->worker_sem);
-	mdx_sem_wait(&motor->task.task_compl_sem);
 
 	dprintf("%s: %s new steps %d\n", __func__, motor->name, motor->pos);
+
+	return (0);
+}
+
+static int
+pnp_move(struct motor_state *motor, int new_pos)
+{
+	int error;
+
+	error = pnp_move_nonblock(motor, new_pos);
+	if (error)
+		return (error);
+
+	mdx_sem_wait(&motor->task.task_compl_sem);
 
 	return (0);
 }
