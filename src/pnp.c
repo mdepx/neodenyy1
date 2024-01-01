@@ -448,22 +448,6 @@ pnp_move(struct motor_state *motor, int new_pos)
 	return (0);
 }
 
-static int
-pnp_move_xy(uint32_t new_pos_x, uint32_t new_pos_y)
-{
-
-	pnp_move_nonblock(&pnp.motor_x, new_pos_x);
-	pnp_move_nonblock(&pnp.motor_y, new_pos_y);
-
-	mdx_sem_wait(&pnp.motor_x.task.task_compl_sem);
-	mdx_sem_wait(&pnp.motor_y.task.task_compl_sem);
-
-	dprintf("%s: new pos %d %d\n", __func__, pnp.motor_x.pos,
-	    pnp.motor_y.pos);
-
-	return (0);
-}
-
 static void
 pnp_move_home_motor(struct motor_state *motor)
 {
@@ -598,18 +582,16 @@ pnp_command_move(struct command *cmd)
 {
 	uint32_t x, y, z, h1, h2;
 
+	/* TODO: check for errors. */
+
 	if (cmd->x_set) {
 		x = cmd->x;
-		if (x > PNP_MAX_X_NM)
-			x = PNP_MAX_X_NM;
 		printf("moving X to %d\n", x);
 		pnp_move_nonblock(&pnp.motor_x, x);
 	}
 
 	if (cmd->y_set) {
 		y = cmd->y;
-		if (y > PNP_MAX_Y_NM)
-			y = PNP_MAX_Y_NM;
 		printf("moving Y to %d\n", y);
 		pnp_move_nonblock(&pnp.motor_y, y);
 	}
@@ -617,7 +599,6 @@ pnp_command_move(struct command *cmd)
 	if (cmd->h1_set) {
 		h1 = cmd->h1;
 		printf("moving H1 to %d\n", h1);
-		/* TODO: check for errors. */
 		pnp_move_nonblock(&pnp.motor_h1, h1);
 	}
 
@@ -799,6 +780,22 @@ pnp_test_heads(void)
 	printf("head moving done\n");
 
 	pnp_henable(0);
+}
+
+static int
+pnp_move_xy(uint32_t new_pos_x, uint32_t new_pos_y)
+{
+
+	pnp_move_nonblock(&pnp.motor_x, new_pos_x);
+	pnp_move_nonblock(&pnp.motor_y, new_pos_y);
+
+	mdx_sem_wait(&pnp.motor_x.task.task_compl_sem);
+	mdx_sem_wait(&pnp.motor_y.task.task_compl_sem);
+
+	dprintf("%s: new pos %d %d\n", __func__, pnp.motor_x.pos,
+	    pnp.motor_y.pos);
+
+	return (0);
 }
 
 static void
