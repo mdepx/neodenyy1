@@ -67,6 +67,15 @@
 #define	PNP_NR_FULL_REVO_STEPS	(12800)
 #define	PNP_NR_STEP_DEG		(PNP_NR_FULL_REVO_DEG / PNP_NR_FULL_REVO_STEPS)
 
+#define	PNP_STEPS_X_MIN		0
+#define	PNP_STEPS_X_MAX		(PNP_MAX_X_NM / PNP_XY_STEP_NM)
+#define	PNP_STEPS_Y_MIN		0
+#define	PNP_STEPS_Y_MAX		(PNP_MAX_Y_NM / PNP_XY_STEP_NM)
+#define	PNP_STEPS_Z_MIN		(-109000000 / PNP_Z_STEP_DEG)
+#define	PNP_STEPS_Z_MAX		(109000000 / PNP_Z_STEP_DEG)
+#define	PNP_STEPS_H_MIN		(-180000000 / PNP_NR_STEP_DEG)
+#define	PNP_STEPS_H_MAX		(180000000 / PNP_NR_STEP_DEG)
+
 struct move_task {
 	int steps;
 	int check_home;
@@ -99,6 +108,10 @@ struct motor_state {
 	 * Could be negative for Z and heads.
 	 */
 	int steps;
+
+	/* Limits. */
+	int steps_max;
+	int steps_min;
 };
 
 struct pnp_state {
@@ -379,7 +392,6 @@ mover(struct motor_state *motor, uint32_t new_pos)
 	task = &motor->task;
 
 	new_steps = new_pos / motor->step_nm;
-
 	if (new_steps > motor->steps) {
 		task->dir = 1;
 		delta = abs(new_steps - motor->steps);
@@ -728,6 +740,8 @@ pnp_initialize(void)
 	pnp.motor_x.step = xstep;
 	pnp.motor_x.chanset = (1 << 0);
 	pnp.motor_x.is_at_home = pnp_is_x_home;
+	pnp.motor_x.steps_min = PNP_STEPS_X_MIN;
+	pnp.motor_x.steps_max = PNP_STEPS_X_MAX;
 	mdx_sem_init(&pnp.motor_x.task.task_compl_sem, 0);
 
 	pnp_motor_initialize(&pnp.motor_y, "Y Motor");
@@ -736,6 +750,8 @@ pnp_initialize(void)
 	pnp.motor_y.step = ystep;
 	pnp.motor_y.chanset = ((1 << 0) | (1 << 1));
 	pnp.motor_y.is_at_home = pnp_is_yl_home;
+	pnp.motor_y.steps_min = PNP_STEPS_Y_MIN;
+	pnp.motor_y.steps_max = PNP_STEPS_Y_MAX;
 	mdx_sem_init(&pnp.motor_y.task.task_compl_sem, 0);
 
 	pnp_motor_initialize(&pnp.motor_z, "Z Motor");
@@ -746,6 +762,8 @@ pnp_initialize(void)
 	pnp.motor_z.is_at_home = pnp_is_z_home;
 	pnp.motor_z.cam_translate_mm_to_deg = trig_translate_z;
 	pnp.motor_z.cam_radius = CAM_RADIUS;
+	pnp.motor_z.steps_min = PNP_STEPS_Z_MIN;
+	pnp.motor_z.steps_max = PNP_STEPS_Z_MAX;
 	mdx_sem_init(&pnp.motor_z.task.task_compl_sem, 0);
 
 	pnp_motor_initialize(&pnp.motor_h1, "H1 Motor");
@@ -754,6 +772,8 @@ pnp_initialize(void)
 	pnp.motor_h1.step = h1step;
 	pnp.motor_h1.chanset = (1 << 0);
 	pnp.motor_h1.is_at_home = NULL;
+	pnp.motor_h1.steps_min = PNP_STEPS_H_MIN;
+	pnp.motor_h1.steps_max = PNP_STEPS_H_MAX;
 	mdx_sem_init(&pnp.motor_h1.task.task_compl_sem, 0);
 
 	pnp_motor_initialize(&pnp.motor_h2, "H2 Motor");
@@ -762,6 +782,8 @@ pnp_initialize(void)
 	pnp.motor_h2.step = h2step;
 	pnp.motor_h2.chanset = (1 << 0);
 	pnp.motor_h2.is_at_home = NULL;
+	pnp.motor_h2.steps_min = PNP_STEPS_H_MIN;
+	pnp.motor_h2.steps_max = PNP_STEPS_H_MAX;
 	mdx_sem_init(&pnp.motor_h2.task.task_compl_sem, 0);
 
 	error = pnp_thread_create("X Motor", &pnp.motor_x);
