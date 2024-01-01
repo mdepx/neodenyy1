@@ -66,7 +66,6 @@
 #define	PNP_NR_STEP_DEG		(PNP_NR_FULL_REVO_DEG / PNP_NR_FULL_REVO_STEPS)
 
 struct move_task {
-	int new_pos;
 	int steps;
 	int check_home;
 	int dir;
@@ -79,7 +78,6 @@ struct move_task {
 };
 
 struct motor_state {
-	int pos;
 	int dir;
 	int chanset;	/* PWM channels. */
 	mdx_sem_t worker_sem;
@@ -89,9 +87,13 @@ struct motor_state {
 	int (*is_at_home)(void);
 	void (*step)(int chanset, int speed);
 	mdx_sem_t step_sem;
-	uint32_t step_nm;	/* Length of a step, nanometers */
+	int step_nm;	/* Length of a step, nanometers. Has to be signed. */
 
-	int steps; /* Current offset from home. */
+	/*
+	 * Current offset from home in steps.
+	 * Could be negative for Z and heads.
+	 */
+	int steps;
 };
 
 struct pnp_state {
@@ -351,13 +353,10 @@ pnp_worker_thread(void *arg)
 
 			motor->step(motor->chanset, speed);
 			mdx_sem_wait(&motor->step_sem);
-			if (task->dir == 1) {
-				motor->pos += motor->step_nm;
+			if (task->dir == 1)
 				motor->steps += 1;
-			} else {
-				motor->pos -= motor->step_nm;
+			else
 				motor->steps -= 1;
-			}
 		}
 
 		dprintf("%s: new pos %d\n", motor->name, motor->pos);
@@ -370,19 +369,21 @@ mover(struct motor_state *motor, uint32_t new_pos)
 {
 	struct move_task *task;
 	uint32_t delta;
+	int new_steps;
 
 	task = &motor->task;
 
-	task->new_pos = new_pos < 0 ? 0 : new_pos;
-	if (task->new_pos > motor->pos) {
+	new_steps = new_pos / motor->step_nm;
+
+	if (new_steps > motor->steps) {
 		task->dir = 1;
-		delta = task->new_pos - motor->pos;
+		delta = abs(new_steps - motor->steps);
 	} else {
 		task->dir = 0;
-		delta = motor->pos - task->new_pos;
+		delta = abs(motor->steps - new_steps);
 	}
 
-	task->steps = delta / motor->step_nm;
+	task->steps = delta;
 	task->speed = 100;
 	task->speed_control = 1;
 
@@ -416,7 +417,7 @@ pnp_move_z(int new_pos)
 {
 	struct motor_state *motor;
 	struct move_task *task;
-	int delta;
+	uint32_t delta;
 	int cam_radius;
 
 	cam_radius = 15000000;
@@ -430,7 +431,6 @@ pnp_move_z(int new_pos)
 	task = &motor->task;
 	task->check_home = 0;
 	task->speed_control = 1;
-	task->new_pos = new_pos;
 
 	uint32_t new_z;
 	int new_z_steps;
@@ -468,30 +468,30 @@ pnp_move_head_nonblock(int head, int new_pos)
 {
 	struct motor_state *motor;
 	struct move_task *task;
-	int delta;
+	int new_h_steps;
+	uint32_t delta;
 
 	motor = head == 1 ? &pnp.motor_h1 : &pnp.motor_h2;
 	task = &motor->task;
 	task->check_home = 0;
 	task->speed_control = 1;
 
-	task->new_pos = new_pos;
-	if (task->new_pos > motor->pos) {
+	new_h_steps = new_pos / motor->step_nm;
+	if (new_h_steps > motor->steps) {
 		task->dir = 1;
-		delta = task->new_pos - motor->pos;
+		delta = abs(new_h_steps - motor->steps);
 	} else {
 		task->dir = 0;
-		delta = motor->pos - task->new_pos;
+		delta = abs(motor->steps - new_h_steps);
 	}
 
-	task->steps = abs(delta) / motor->step_nm;
+	task->steps = delta;
 	task->speed = 100;
 
 	printf("%s: making %d steps\n", __func__, task->steps);
 
 	motor->set_direction(task->dir);
 	mdx_sem_post(&motor->worker_sem);
-
 }
 
 static void
@@ -550,7 +550,6 @@ pnp_move_home_motor(struct motor_state *motor)
 	mdx_sem_post(&motor->worker_sem);
 	mdx_sem_wait(&task->task_compl_sem);
 
-	motor->pos = 0;
 	motor->steps = 0;
 	printf("%s home reached\n", motor->name);
 }
@@ -617,7 +616,6 @@ pnp_move_home_z(struct motor_state *motor)
 	mdx_sem_post(&motor->worker_sem);
 	mdx_sem_wait(&task->task_compl_sem);
 
-	motor->pos = 0;
 	motor->steps = 0;
 	printf("z home found\n");
 
@@ -851,7 +849,7 @@ pnp_move_random(void)
 	}
 
 	//pnp_move_z(-31000000);
-	//pnp.motor_z.pos = 0;
+	//pnp.motor_z.steps = 0;
 
 	pnp_move_xy(0, 0);
 }
