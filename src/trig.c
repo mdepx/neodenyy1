@@ -33,8 +33,7 @@
 
 #include <lib/msun/src/math.h>
 
-#include "board.h"
-#include "pnp.h"
+#include "trig.h"
 
 #define	TRIG_DEBUG
 #undef	TRIG_DEBUG
@@ -51,7 +50,7 @@
 
 /*
  * cam_radius and z are in mm.
- * return value is motor rotation degrees.
+ * return value is motor rotation degrees multiplied by 1000000.
  *
  * Note: absolute z is expected as input.
  */
@@ -65,11 +64,11 @@ trig_translate_z(float z0, float cam_radius)
 
 	z = abs(z0);
 
-	/* Can't rotate more than 180 deg. */
+	/* Can't rotate for more than 180 deg. */
 	if (z > cam_radius * 2)
 		return (-1);
 
-	val = (z - cam_radius) / cam_radius;
+	val = z / cam_radius - 1;
 	deg = 90 + DEG(asin(val));
 
 	/* Convert to nano. */
@@ -86,14 +85,17 @@ trig_translate_z(float z0, float cam_radius)
 	return (result);
 }
 
-static void __unused
+void
 trig_test(void)
 {
 	int cam_radius;
+	int result;
 	float j;
 
 	cam_radius = 15000000;
 
-	for (j = 0; j < 180; j += 1)
-		trig_translate_z(j * 1000000, cam_radius);
+	for (j = 0; j < 30; j += 1) {
+		result = trig_translate_z(j * 1000000, cam_radius);
+		printf("%s: z %f mm, deg %d\n", __func__, j, result);
+	}
 }

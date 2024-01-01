@@ -37,6 +37,7 @@
 
 #include "board.h"
 #include "pnp.h"
+#include "trig.h"
 
 #define	PNP_DEBUG
 #undef	PNP_DEBUG

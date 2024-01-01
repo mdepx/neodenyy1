@@ -64,8 +64,6 @@ void pnp_pwm_h2_intr(void *arg, int irq);
 int pnp_test(void);
 void pnp_command_move(struct command *cmd);
 int pnp_mainloop(void);
-
-int trig_translate_z(float z, float cam_radius);
 void pnp_henable(int enable);
 
 #endif /* !_SRC_PNP_H_ */
