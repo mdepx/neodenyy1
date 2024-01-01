@@ -458,6 +458,12 @@ pnp_move_z(int new_pos)
 	}
 
 	new_z_steps = new_pos / motor->step_nm;
+	if (new_z_steps > motor->steps_max ||
+	    new_z_steps < motor->steps_min) {
+		printf("Can't move due to limits\n");
+		return (-3);
+	}
+
 	if (new_z_steps > motor->steps) {
 		task->dir = 1;
 		delta = abs(new_z_steps - motor->steps);
