@@ -430,13 +430,13 @@ pnp_move_xy(uint32_t new_pos_x, uint32_t new_pos_y)
 }
 
 static int
-pnp_move_z(struct motor_state *motor, int new_pos)
+pnp_move(struct motor_state *motor, int new_pos)
 {
 	struct move_task *task;
 	uint32_t delta;
-	int new_z_steps;
-	int new_z;
+	int new_steps;
 	int error;
+	int tmp;
 
 	task = &motor->task;
 	task->check_home = 0;
@@ -447,27 +447,27 @@ pnp_move_z(struct motor_state *motor, int new_pos)
 		if (motor->cam_radius == 0)
 			return (-1);
 		error = motor->cam_translate_mm_to_deg(new_pos,
-		    motor->cam_radius, &new_z);
+		    motor->cam_radius, &tmp);
 		if (error) {
 			printf("Error: can't translate coordinate\n");
 			return (-2);
 		}
-		new_pos = new_z;
+		new_pos = tmp;
 	}
 
-	new_z_steps = new_pos / motor->step_nm;
-	if (new_z_steps > motor->steps_max ||
-	    new_z_steps < motor->steps_min) {
+	new_steps = new_pos / motor->step_nm;
+	if (new_steps > motor->steps_max ||
+	    new_steps < motor->steps_min) {
 		printf("Can't move due to limits\n");
 		return (-3);
 	}
 
-	if (new_z_steps > motor->steps) {
+	if (new_steps > motor->steps) {
 		task->dir = 1;
-		delta = abs(new_z_steps - motor->steps);
+		delta = abs(new_steps - motor->steps);
 	} else {
 		task->dir = 0;
-		delta = abs(motor->steps - new_z_steps);
+		delta = abs(motor->steps - new_steps);
 	}
 
 	task->steps = delta;
@@ -477,7 +477,7 @@ pnp_move_z(struct motor_state *motor, int new_pos)
 	mdx_sem_post(&motor->worker_sem);
 	mdx_sem_wait(&motor->task.task_compl_sem);
 
-	dprintf("%s: new z %d\n", __func__, motor->pos);
+	dprintf("%s: %s new steps %d\n", __func__, motor->name, motor->pos);
 
 	return (0);
 }
@@ -701,7 +701,7 @@ pnp_command_move(struct command *cmd)
 	if (cmd->z_set) {
 		z = cmd->z;
 		printf("moving Z to %d\n", z);
-		pnp_move_z(&pnp.motor_z, z);
+		pnp_move(&pnp.motor_z, z);
 	}
 }
 
@@ -874,9 +874,9 @@ pnp_move_random(void)
 		new_y = board_get_random() % PNP_MAX_Y_NM;
 		printf("%d: moving to %u %u\n", i, new_x, new_y);
 		pnp_move_xy(new_x, new_y);
-		pnp_move_z(&pnp.motor_z, -10000000);
-		pnp_move_z(&pnp.motor_z, 10000000);
-		pnp_move_z(&pnp.motor_z, 0);
+		pnp_move(&pnp.motor_z, -10000000);
+		pnp_move(&pnp.motor_z, 10000000);
+		pnp_move(&pnp.motor_z, 0);
 	}
 
 	pnp_move_xy(0, 0);
@@ -894,7 +894,7 @@ pnp_test_z(void)
 
 	while (1) {
 		for (i = 6; i < 17; i++) {
-			pnp_move_z(&pnp.motor_z, i * 1000000);
+			pnp_move(&pnp.motor_z, i * 1000000);
 			mdx_usleep(500000);
 			mdx_usleep(500000);
 		}
