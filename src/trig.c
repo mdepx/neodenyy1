@@ -55,12 +55,11 @@
  * Note: absolute z is expected as input.
  */
 int
-trig_translate_z(float z0, float cam_radius)
+trig_translate_z(float z0, float cam_radius, int *result)
 {
 	float val;
 	float deg;
 	float z;
-	int result;
 
 	z = abs(z0);
 
@@ -78,11 +77,11 @@ trig_translate_z(float z0, float cam_radius)
 	if (z0 < 0)
 		deg *= -1;
 
-	result = deg;
+	*result = deg;
 
 	dprintf("%s: z %f mm, deg %d\n", __func__, z, result);
 
-	return (result);
+	return (0);
 }
 
 void
@@ -90,12 +89,17 @@ trig_test(void)
 {
 	int cam_radius;
 	int result;
+	int error;
 	float j;
 
 	cam_radius = 15000000;
 
 	for (j = 0; j < 30; j += 1) {
-		result = trig_translate_z(j * 1000000, cam_radius);
+		error = trig_translate_z(j * 1000000, cam_radius, &result);
+		if (error) {
+			printf("%s: can't translate %f\n", __func__, j);
+			break;
+		}
 		printf("%s: z %f mm, deg %d\n", __func__, j, result);
 	}
 }

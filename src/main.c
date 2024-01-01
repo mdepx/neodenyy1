@@ -40,6 +40,10 @@ main(void)
 
 	mdx_usleep(100);
 
+	/*
+	 * Safety delay. Do not remove.
+	 */
+
 	printf("Sleeping 2 sec\n");
 	for (i = 0; i < 2; i++) {
 		udelay(500000);

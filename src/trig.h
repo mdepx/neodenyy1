@@ -27,7 +27,7 @@
 #ifndef _SRC_TRIG_H_
 #define	_SRC_TRIG_H_
 
-int trig_translate_z(float z, float cam_radius);
+int trig_translate_z(float z, float cam_radius, int *result);
 void trig_test(void);
 
 #endif /* !_SRC_TRIG_H_ */

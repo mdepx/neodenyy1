@@ -91,6 +91,9 @@ struct motor_state {
 	mdx_sem_t step_sem;
 	int step_nm;	/* Length of a step, nanometers. Has to be signed. */
 
+	int (*cam_translate_mm_to_deg)(float z, float cam_radius, int *result);
+	int cam_radius;
+
 	/*
 	 * Current offset from home in steps.
 	 * Could be negative for Z and heads.
@@ -423,6 +426,7 @@ pnp_move_z(int new_pos)
 	int cam_radius;
 	int new_z_steps;
 	int new_z;
+	int error;
 
 	cam_radius = CAM_RADIUS;
 
@@ -436,12 +440,20 @@ pnp_move_z(int new_pos)
 	task->check_home = 0;
 	task->speed_control = 1;
 
-	/* Convert new position from mm to degrees. */
-	new_z = trig_translate_z(new_pos, cam_radius);
-	new_z_steps = new_z / motor->step_nm;
+	/* Convert required position from mm to degrees if needed. */
+	if (motor->cam_translate_mm_to_deg) {
+		if (motor->cam_radius == 0)
+			return (-1);
+		error = motor->cam_translate_mm_to_deg(new_pos,
+		    motor->cam_radius, &new_z);
+		if (error) {
+			printf("Error: can't translate coordinate\n");
+			return (-2);
+		}
+		new_pos = new_z;
+	}
 
-	printf("new_z %d steps %d\n", new_z, new_z_steps);
-
+	new_z_steps = new_pos / motor->step_nm;
 	if (new_z_steps > motor->steps) {
 		task->dir = 1;
 		delta = abs(new_z_steps - motor->steps);
@@ -740,6 +752,8 @@ pnp_initialize(void)
 	pnp.motor_z.step = zstep;
 	pnp.motor_z.chanset = (1 << 0);
 	pnp.motor_z.is_at_home = pnp_is_z_home;
+	pnp.motor_z.cam_translate_mm_to_deg = trig_translate_z;
+	pnp.motor_z.cam_radius = CAM_RADIUS;
 	mdx_sem_init(&pnp.motor_z.task.task_compl_sem, 0);
 
 	pnp_motor_initialize(&pnp.motor_h1, "H1 Motor");
