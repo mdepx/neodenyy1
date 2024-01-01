@@ -382,53 +382,6 @@ pnp_worker_thread(void *arg)
 	}
 }
 
-static void
-mover(struct motor_state *motor, uint32_t new_pos)
-{
-	struct move_task *task;
-	uint32_t delta;
-	int new_steps;
-
-	task = &motor->task;
-
-	new_steps = new_pos / motor->step_nm;
-	if (new_steps > motor->steps) {
-		task->dir = 1;
-		delta = abs(new_steps - motor->steps);
-	} else {
-		task->dir = 0;
-		delta = abs(motor->steps - new_steps);
-	}
-
-	task->steps = delta;
-	task->speed = 100;
-	task->speed_control = 1;
-
-	motor->set_direction(task->dir);
-	mdx_sem_post(&motor->worker_sem);
-}
-
-static int
-pnp_move_xy(uint32_t new_pos_x, uint32_t new_pos_y)
-{
-
-	if (new_pos_x > PNP_MAX_X_NM)
-		new_pos_x = PNP_MAX_X_NM;
-	if (new_pos_y > PNP_MAX_Y_NM)
-		new_pos_y = PNP_MAX_Y_NM;
-
-	mover(&pnp.motor_x, new_pos_x);
-	mover(&pnp.motor_y, new_pos_y);
-
-	mdx_sem_wait(&pnp.motor_x.task.task_compl_sem);
-	mdx_sem_wait(&pnp.motor_y.task.task_compl_sem);
-
-	dprintf("%s: new pos %d %d\n", __func__, pnp.motor_x.pos,
-	    pnp.motor_y.pos);
-
-	return (0);
-}
-
 static int
 pnp_move_nonblock(struct motor_state *motor, int new_pos)
 {
@@ -491,6 +444,22 @@ pnp_move(struct motor_state *motor, int new_pos)
 		return (error);
 
 	mdx_sem_wait(&motor->task.task_compl_sem);
+
+	return (0);
+}
+
+static int
+pnp_move_xy(uint32_t new_pos_x, uint32_t new_pos_y)
+{
+
+	pnp_move_nonblock(&pnp.motor_x, new_pos_x);
+	pnp_move_nonblock(&pnp.motor_y, new_pos_y);
+
+	mdx_sem_wait(&pnp.motor_x.task.task_compl_sem);
+	mdx_sem_wait(&pnp.motor_y.task.task_compl_sem);
+
+	dprintf("%s: new pos %d %d\n", __func__, pnp.motor_x.pos,
+	    pnp.motor_y.pos);
 
 	return (0);
 }
@@ -634,7 +603,7 @@ pnp_command_move(struct command *cmd)
 		if (x > PNP_MAX_X_NM)
 			x = PNP_MAX_X_NM;
 		printf("moving X to %d\n", x);
-		mover(&pnp.motor_x, x);
+		pnp_move_nonblock(&pnp.motor_x, x);
 	}
 
 	if (cmd->y_set) {
@@ -642,7 +611,7 @@ pnp_command_move(struct command *cmd)
 		if (y > PNP_MAX_Y_NM)
 			y = PNP_MAX_Y_NM;
 		printf("moving Y to %d\n", y);
-		mover(&pnp.motor_y, y);
+		pnp_move_nonblock(&pnp.motor_y, y);
 	}
 
 	if (cmd->h1_set) {
