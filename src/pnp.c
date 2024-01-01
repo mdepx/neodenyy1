@@ -496,51 +496,6 @@ pnp_move(struct motor_state *motor, int new_pos)
 }
 
 static void
-pnp_move_head_nonblock(int head, int new_pos)
-{
-	struct motor_state *motor;
-	struct move_task *task;
-	int new_h_steps;
-	uint32_t delta;
-
-	motor = head == 1 ? &pnp.motor_h1 : &pnp.motor_h2;
-	task = &motor->task;
-	task->check_home = 0;
-	task->speed_control = 1;
-
-	new_h_steps = new_pos / motor->step_nm;
-	if (new_h_steps > motor->steps) {
-		task->dir = 1;
-		delta = abs(new_h_steps - motor->steps);
-	} else {
-		task->dir = 0;
-		delta = abs(motor->steps - new_h_steps);
-	}
-
-	task->steps = delta;
-	task->speed = 100;
-
-	printf("%s: making %d steps\n", __func__, task->steps);
-
-	motor->set_direction(task->dir);
-	mdx_sem_post(&motor->worker_sem);
-}
-
-static void
-pnp_move_head(int head, int new_pos)
-{
-	struct motor_state *motor;
-
-	motor = head == 1 ? &pnp.motor_h1 : &pnp.motor_h2;
-
-	pnp_move_head_nonblock(head, new_pos);
-
-	mdx_sem_wait(&motor->task.task_compl_sem);
-
-	dprintf("%s: head%d new_pos %d\n", __func__, head, motor->pos);
-}
-
-static void
 pnp_move_home_motor(struct motor_state *motor)
 {
 	struct move_task *task;
@@ -693,13 +648,15 @@ pnp_command_move(struct command *cmd)
 	if (cmd->h1_set) {
 		h1 = cmd->h1;
 		printf("moving H1 to %d\n", h1);
-		pnp_move_head_nonblock(1, h1);
+		/* TODO: check for errors. */
+		pnp_move_nonblock(&pnp.motor_h1, h1);
 	}
 
 	if (cmd->h2_set) {
 		h2 = cmd->h2;
 		printf("moving H2 to %d\n", h2);
-		pnp_move_head_nonblock(2, h2);
+		/* TODO: check for errors. */
+		pnp_move_nonblock(&pnp.motor_h2, h2);
 	}
 
 	if (cmd->h1_set)
@@ -858,16 +815,16 @@ pnp_test_heads(void)
 
 	printf("starting moving head\n");
 	for (i = 0; i < 1; i++) {
-		pnp_move_head(1, 10000000);
-		pnp_move_head(2, 10000000);
+		pnp_move(&pnp.motor_h1, 10000000);
+		pnp_move(&pnp.motor_h2, 10000000);
 		mdx_usleep(500000);
 
-		pnp_move_head(1, -10000000);
-		pnp_move_head(2, -10000000);
+		pnp_move(&pnp.motor_h1, -10000000);
+		pnp_move(&pnp.motor_h2, -10000000);
 		mdx_usleep(500000);
 
-		pnp_move_head(1, 0);
-		pnp_move_head(2, 0);
+		pnp_move(&pnp.motor_h1, 0);
+		pnp_move(&pnp.motor_h2, 0);
 		mdx_usleep(500000);
 	}
 	printf("head moving done\n");
