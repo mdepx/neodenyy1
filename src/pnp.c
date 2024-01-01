@@ -876,16 +876,7 @@ pnp_test_z(void)
 int
 pnp_test(void)
 {
-	int cam_radius;
 	int error;
-	float j;
-
-	cam_radius = CAM_RADIUS;
-
-	for (j = 0; j < 180; j += 1)
-		trig_translate_z(j * 1000000, cam_radius);
-
-	//return (0);
 
 	pnp_initialize();
 	pnp_test_heads();

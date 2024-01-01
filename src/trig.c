@@ -85,3 +85,15 @@ trig_translate_z(float z0, float cam_radius)
 
 	return (result);
 }
+
+static void __unused
+trig_test(void)
+{
+	int cam_radius;
+	float j;
+
+	cam_radius = 15000000;
+
+	for (j = 0; j < 180; j += 1)
+		trig_translate_z(j * 1000000, cam_radius);
+}
