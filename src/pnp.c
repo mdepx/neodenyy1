@@ -430,16 +430,14 @@ pnp_move_xy(uint32_t new_pos_x, uint32_t new_pos_y)
 }
 
 static int
-pnp_move_z(int new_pos)
+pnp_move_z(struct motor_state *motor, int new_pos)
 {
-	struct motor_state *motor;
 	struct move_task *task;
 	uint32_t delta;
 	int new_z_steps;
 	int new_z;
 	int error;
 
-	motor = &pnp.motor_z;
 	task = &motor->task;
 	task->check_home = 0;
 	task->speed_control = 1;
@@ -703,7 +701,7 @@ pnp_command_move(struct command *cmd)
 	if (cmd->z_set) {
 		z = cmd->z;
 		printf("moving Z to %d\n", z);
-		pnp_move_z(z);
+		pnp_move_z(&pnp.motor_z, z);
 	}
 }
 
@@ -876,13 +874,10 @@ pnp_move_random(void)
 		new_y = board_get_random() % PNP_MAX_Y_NM;
 		printf("%d: moving to %u %u\n", i, new_x, new_y);
 		pnp_move_xy(new_x, new_y);
-		pnp_move_z(-10000000);
-		pnp_move_z(10000000);
-		pnp_move_z(0);
+		pnp_move_z(&pnp.motor_z, -10000000);
+		pnp_move_z(&pnp.motor_z, 10000000);
+		pnp_move_z(&pnp.motor_z, 0);
 	}
-
-	//pnp_move_z(-31000000);
-	//pnp.motor_z.steps = 0;
 
 	pnp_move_xy(0, 0);
 }
@@ -899,7 +894,7 @@ pnp_test_z(void)
 
 	while (1) {
 		for (i = 6; i < 17; i++) {
-			pnp_move_z(i * 1000000);
+			pnp_move_z(&pnp.motor_z, i * 1000000);
 			mdx_usleep(500000);
 			mdx_usleep(500000);
 		}
