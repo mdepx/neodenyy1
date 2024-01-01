@@ -49,6 +49,7 @@
 
 #define	PNP_MAX_X_NM		(340000000)	/* nanometers */
 #define	PNP_MAX_Y_NM		(368000000)	/* nanometers */
+#define	CAM_RADIUS		(15000000)
 
 /* XY steppers are in linear motion. */
 #define	PNP_XY_FULL_REVO_NM	(40000000)
@@ -419,8 +420,10 @@ pnp_move_z(int new_pos)
 	struct move_task *task;
 	uint32_t delta;
 	int cam_radius;
+	int new_z_steps;
+	int new_z;
 
-	cam_radius = 15000000;
+	cam_radius = CAM_RADIUS;
 
 	if (abs(new_pos) > cam_radius * 2) {
 		printf("%s: Can't move Z to %d\n", __func__, new_pos);
@@ -432,14 +435,9 @@ pnp_move_z(int new_pos)
 	task->check_home = 0;
 	task->speed_control = 1;
 
-	uint32_t new_z;
-	int new_z_steps;
-
 	/* Convert new position from mm to degrees. */
-	new_z = trig_translate_z(abs(new_pos), cam_radius);
+	new_z = trig_translate_z(new_pos, cam_radius);
 	new_z_steps = new_z / motor->step_nm;
-	if (new_pos < 0)
-		new_z_steps *= -1;
 
 	printf("new_z %d steps %d\n", new_z, new_z_steps);
 
@@ -882,7 +880,7 @@ pnp_test(void)
 	int error;
 	float j;
 
-	cam_radius = 15000000;
+	cam_radius = CAM_RADIUS;
 
 	for (j = 0; j < 180; j += 1)
 		trig_translate_z(j * 1000000, cam_radius);
