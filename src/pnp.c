@@ -557,7 +557,7 @@ pnp_move_home_z(struct motor_state *motor)
 	mdx_sem_wait(&task->task_compl_sem);
 
 	motor->steps = 0;
-	printf("z home found\n");
+	printf("Z home found\n");
 
 	return (0);
 }
@@ -808,7 +808,7 @@ pnp_move_random(void)
 	for (i = 0; i < 2; i++) {
 		new_x = board_get_random() % PNP_MAX_X_NM;
 		new_y = board_get_random() % PNP_MAX_Y_NM;
-		printf("%d: moving to %u %u\n", i, new_x, new_y);
+		printf("%d: moving xy to %u %u\n", i, new_x, new_y);
 		pnp_move_xy(new_x, new_y);
 		pnp_move(&pnp.motor_z, -10000000);
 		pnp_move(&pnp.motor_z, 10000000);
