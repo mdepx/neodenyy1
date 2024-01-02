@@ -360,6 +360,8 @@ pnp_worker_thread(void *arg)
 
 		dprintf("%s: steps needed %d\n", __func__, steps);
 
+		motor->set_direction(task->dir);
+
 		for (i = 0; i < steps; i++) {
 			if (task->check_home && motor->is_at_home()) {
 				task->home_found = 1;
@@ -426,7 +428,6 @@ pnp_move_nonblock(struct motor_state *motor, int new_pos)
 	task->steps = delta;
 	task->speed = 100;
 
-	motor->set_direction(task->dir);
 	mdx_sem_post(&motor->worker_sem);
 
 	return (0);
@@ -456,7 +457,7 @@ pnp_move_home_motor(struct motor_state *motor)
 	/* Ensure we are not at home. */
 	if (motor->is_at_home()) {
 		/* Already at home, move back a bit. */
-		motor->set_direction(1);
+		task->dir = 1;
 		task->steps = 10000000 / motor->step_nm;
 		task->speed = 20;
 		task->speed_control = 1;
@@ -473,7 +474,7 @@ pnp_move_home_motor(struct motor_state *motor)
 	task->check_home = 1;
 	task->speed = 20;
 	task->speed_control = 0;
-	motor->set_direction(0);
+	task->dir = 0;
 	mdx_sem_post(&motor->worker_sem);
 	mdx_sem_wait(&task->task_compl_sem);
 
@@ -484,7 +485,7 @@ pnp_move_home_motor(struct motor_state *motor)
 	task->check_home = 0;
 	task->speed = 5;
 	task->speed_control = 0;
-	motor->set_direction(0);
+	task->dir = 0;
 	mdx_sem_post(&motor->worker_sem);
 	mdx_sem_wait(&task->task_compl_sem);
 
@@ -510,7 +511,7 @@ pnp_move_home_z(struct motor_state *motor)
 		task->speed = 15;
 		task->speed_control = 0;
 		task->home_found = 0;
-		motor->set_direction(1);
+		task->dir = 1;
 		mdx_sem_post(&motor->worker_sem);
 		mdx_sem_wait(&task->task_compl_sem);
 		/* TODO: ensure we left it. */
@@ -523,7 +524,7 @@ pnp_move_home_z(struct motor_state *motor)
 	/* Now find home once again. */
 	for (i = 0; i < 20; i++) {
 		printf("Making %d steps towards %d\n", steps, dir);
-		motor->set_direction(dir);
+		task->dir = dir;
 		task->steps = steps;
 		task->check_home = 1;
 		task->speed = 15;
@@ -550,7 +551,7 @@ pnp_move_home_z(struct motor_state *motor)
 	task->speed = 15;
 	task->speed_control = 0;
 	task->home_found = 0;
-	motor->set_direction(dir);
+	task->dir = dir;
 	mdx_sem_post(&motor->worker_sem);
 	mdx_sem_wait(&task->task_compl_sem);
 
