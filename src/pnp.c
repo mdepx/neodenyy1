@@ -429,8 +429,6 @@ pnp_move_nonblock(struct motor_state *motor, int new_pos)
 	motor->set_direction(task->dir);
 	mdx_sem_post(&motor->worker_sem);
 
-	dprintf("%s: %s new steps %d\n", __func__, motor->name, motor->pos);
-
 	return (0);
 }
 
