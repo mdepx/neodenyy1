@@ -79,7 +79,7 @@
 struct move_task {
 	int steps;
 	int check_home;
-	int dir;
+	int direction;
 	int speed;
 	mdx_sem_t task_compl_sem;
 	int speed_control;
@@ -89,7 +89,6 @@ struct move_task {
 };
 
 struct motor_state {
-	int dir;
 	int chanset;	/* PWM channels. */
 	mdx_sem_t worker_sem;
 	struct move_task task;
@@ -360,7 +359,7 @@ pnp_worker_thread(void *arg)
 
 		dprintf("%s: steps needed %d\n", __func__, steps);
 
-		motor->set_direction(task->dir);
+		motor->set_direction(task->direction);
 
 		for (i = 0; i < steps; i++) {
 			if (task->check_home && motor->is_at_home()) {
@@ -373,7 +372,7 @@ pnp_worker_thread(void *arg)
 
 			motor->step(motor->chanset, speed);
 			mdx_sem_wait(&motor->step_sem);
-			if (task->dir == 1)
+			if (task->direction == 1)
 				motor->steps += 1;
 			else
 				motor->steps -= 1;
@@ -418,10 +417,10 @@ pnp_move_nonblock(struct motor_state *motor, int new_pos)
 	}
 
 	if (new_steps > motor->steps) {
-		task->dir = 1;
+		task->direction = 1;
 		delta = abs(new_steps - motor->steps);
 	} else {
-		task->dir = 0;
+		task->direction = 0;
 		delta = abs(motor->steps - new_steps);
 	}
 
@@ -457,7 +456,7 @@ pnp_move_home_motor(struct motor_state *motor)
 	/* Ensure we are not at home. */
 	if (motor->is_at_home()) {
 		/* Already at home, move back a bit. */
-		task->dir = 1;
+		task->direction = 1;
 		task->steps = 10000000 / motor->step_nm;
 		task->speed = 20;
 		task->speed_control = 1;
@@ -474,7 +473,7 @@ pnp_move_home_motor(struct motor_state *motor)
 	task->check_home = 1;
 	task->speed = 20;
 	task->speed_control = 0;
-	task->dir = 0;
+	task->direction = 0;
 	mdx_sem_post(&motor->worker_sem);
 	mdx_sem_wait(&task->task_compl_sem);
 
@@ -485,7 +484,7 @@ pnp_move_home_motor(struct motor_state *motor)
 	task->check_home = 0;
 	task->speed = 5;
 	task->speed_control = 0;
-	task->dir = 0;
+	task->direction = 0;
 	mdx_sem_post(&motor->worker_sem);
 	mdx_sem_wait(&task->task_compl_sem);
 
@@ -511,7 +510,7 @@ pnp_move_home_z(struct motor_state *motor)
 		task->speed = 15;
 		task->speed_control = 0;
 		task->home_found = 0;
-		task->dir = 1;
+		task->direction = 1;
 		mdx_sem_post(&motor->worker_sem);
 		mdx_sem_wait(&task->task_compl_sem);
 		/* TODO: ensure we left it. */
@@ -524,7 +523,7 @@ pnp_move_home_z(struct motor_state *motor)
 	/* Now find home once again. */
 	for (i = 0; i < 20; i++) {
 		printf("Making %d steps towards %d\n", steps, dir);
-		task->dir = dir;
+		task->direction = dir;
 		task->steps = steps;
 		task->check_home = 1;
 		task->speed = 15;
@@ -551,7 +550,7 @@ pnp_move_home_z(struct motor_state *motor)
 	task->speed = 15;
 	task->speed_control = 0;
 	task->home_found = 0;
-	task->dir = dir;
+	task->direction = dir;
 	mdx_sem_post(&motor->worker_sem);
 	mdx_sem_wait(&task->task_compl_sem);
 
