@@ -127,7 +127,7 @@ gcode_command(char *line, int len)
 	char *end;
 	float value;
 
-#if 1
+#ifdef GCODE_DEBUG
 	int i;
 	printf("GCODE: ");
 	for (i = 0; i < len; i++)
@@ -148,7 +148,7 @@ gcode_command(char *line, int len)
 		}
 
 		if (letter < 'A' || letter > 'Z') {
-			printf("Fatal error.\n");
+			printf("%s: Error: expected a letter.\n", __func__);
 			break;
 		}
 
@@ -232,6 +232,7 @@ gcode_command(char *line, int len)
 		}
 	}
 
+	/* Acknowledge the command. */
 	printf("OK\n");
 
 	switch (cmd.type) {
@@ -246,6 +247,7 @@ gcode_command(char *line, int len)
 		break;
 	};
 
+	/* TODO: check for errors. */
 	printf("COMPLETE\n");
 }
 
