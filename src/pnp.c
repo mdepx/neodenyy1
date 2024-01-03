@@ -105,7 +105,7 @@ struct motor_state {
 
 	/*
 	 * Current offset from home in steps.
-	 * Could be negative for Z and heads.
+	 * Could be negative for Z or nozzles.
 	 */
 	int steps;
 
@@ -353,7 +353,7 @@ pnp_worker_thread(void *arg)
 
 	while (1) {
 		mdx_sem_wait(&motor->worker_sem);
-		dprintf("%s: TR\n", __func__);
+		dprintf("%s: task rcvd\n", __func__);
 
 		steps = task->steps;
 		speed = task->speed;
@@ -379,8 +379,8 @@ pnp_worker_thread(void *arg)
 				motor->steps -= 1;
 		}
 
-		dprintf("%s: new pos %d\n", motor->name, motor->pos);
 		mdx_sem_post(&task->task_compl_sem);
+		dprintf("%s: task compl\n", __func__);
 	}
 }
 
