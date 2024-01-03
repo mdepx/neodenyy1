@@ -577,7 +577,7 @@ pnp_move_home(void)
 }
 
 void
-pnp_command_move(struct command *cmd)
+pnp_command_move(struct gcode_command *cmd)
 {
 	uint32_t x, y, z, h1, h2;
 

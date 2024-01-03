@@ -27,7 +27,7 @@
 #ifndef _SRC_GCODE_H_
 #define	_SRC_GCODE_H_
 
-struct command {
+struct gcode_command {
 	int type;
 #define	CMD_TYPE_MOVE		1
 #define	CMD_TYPE_ACTUATE	2

@@ -54,7 +54,7 @@ static uint8_t cmd_buffer[MAX_GCODE_LEN];
 static int cmd_buffer_ptr;
 
 static void
-gcode_command_sensor_read(struct command *cmd)
+gcode_command_sensor_read(struct gcode_command *cmd)
 {
 	int val;
 
@@ -68,7 +68,7 @@ gcode_command_sensor_read(struct command *cmd)
 }
 
 static void
-gcode_command_actuate(struct command *cmd)
+gcode_command_actuate(struct gcode_command *cmd)
 {
 	int cur;
 	int val;
@@ -121,7 +121,7 @@ gcode_command_actuate(struct command *cmd)
 static void
 gcode_command(char *line, int len)
 {
-	struct command cmd;
+	struct gcode_command cmd;
 	uint8_t letter;
 	char *endp;
 	char *end;
@@ -135,7 +135,7 @@ gcode_command(char *line, int len)
 	printf("\n");
 #endif
 
-	bzero(&cmd, sizeof(struct command));
+	bzero(&cmd, sizeof(struct gcode_command));
 
 	end = line + len;
 	while (line < end) {
