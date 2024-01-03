@@ -36,6 +36,7 @@
 #include <arm/stm/stm32f4.h>
 
 #include "board.h"
+#include "gcode.h"
 #include "pnp.h"
 #include "trig.h"
 
@@ -850,7 +851,7 @@ pnp_test(void)
 	if (error)
 		return (error);
 	pnp_move_random();
-	pnp_mainloop();
+	gcode_mainloop();
 	pnp_deinitialize();
 
 	return (0);

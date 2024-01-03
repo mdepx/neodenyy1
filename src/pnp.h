@@ -27,34 +27,6 @@
 #ifndef _SRC_PNP_H_
 #define	_SRC_PNP_H_
 
-struct command {
-	int type;
-#define	CMD_TYPE_MOVE		1
-#define	CMD_TYPE_ACTUATE	2
-#define	CMD_TYPE_SENSOR_READ	3
-
-	int x;
-	int y;
-	int z;
-	int h1;
-	int h2;
-	int x_set;
-	int y_set;
-	int z_set;
-	int h1_set;
-	int h2_set;
-
-	int actuate_target;
-#define	PNP_ACTUATE_TARGET_PUMP		1
-#define	PNP_ACTUATE_TARGET_AVAC1	2
-#define	PNP_ACTUATE_TARGET_AVAC2	3
-#define	PNP_ACTUATE_TARGET_NEEDLE	4
-#define	PNP_ACTUATE_TARGET_PEEL		5
-	int actuate_value;
-
-	int sensor_read_target;
-};
-
 void pnp_pwm_x_intr(void *arg, int irq);
 void pnp_pwm_y_intr(void *arg, int irq);
 void pnp_pwm_z_intr(void *arg, int irq);
@@ -63,7 +35,6 @@ void pnp_pwm_h2_intr(void *arg, int irq);
 
 int pnp_test(void);
 void pnp_command_move(struct command *cmd);
-int pnp_mainloop(void);
 void pnp_henable(int enable);
 
 #endif /* !_SRC_PNP_H_ */

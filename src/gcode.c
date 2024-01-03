@@ -34,6 +34,7 @@
 #include <arm/stm/stm32f4.h>
 
 #include "board.h"
+#include "gcode.h"
 #include "pnp.h"
 
 #define	GCODE_DEBUG
@@ -53,7 +54,7 @@ static uint8_t cmd_buffer[MAX_GCODE_LEN];
 static int cmd_buffer_ptr;
 
 static void
-pnp_command_sensor_read(struct command *cmd)
+gcode_command_sensor_read(struct command *cmd)
 {
 	int val;
 
@@ -67,7 +68,7 @@ pnp_command_sensor_read(struct command *cmd)
 }
 
 static void
-pnp_command_actuate(struct command *cmd)
+gcode_command_actuate(struct command *cmd)
 {
 	int cur;
 	int val;
@@ -118,7 +119,7 @@ pnp_command_actuate(struct command *cmd)
 }
 
 static void
-pnp_command(char *line, int len)
+gcode_command(char *line, int len)
 {
 	struct command cmd;
 	uint8_t letter;
@@ -238,10 +239,10 @@ pnp_command(char *line, int len)
 		pnp_command_move(&cmd);
 		break;
 	case CMD_TYPE_ACTUATE:
-		pnp_command_actuate(&cmd);
+		gcode_command_actuate(&cmd);
 		break;
 	case CMD_TYPE_SENSOR_READ:
-		pnp_command_sensor_read(&cmd);
+		gcode_command_sensor_read(&cmd);
 		break;
 	};
 
@@ -249,7 +250,7 @@ pnp_command(char *line, int len)
 }
 
 static void
-pnp_process_data(int ptr, int len)
+gcode_process_data(int ptr, int len)
 {
 	uint8_t *start;
 	uint8_t ch;
@@ -261,7 +262,7 @@ pnp_process_data(int ptr, int len)
 		dprintf("ch %d\n", ch);
 		cmd_buffer[cmd_buffer_ptr] = ch;
 		if (ch == '\n') { /* LF */
-			pnp_command(cmd_buffer, cmd_buffer_ptr);
+			gcode_command(cmd_buffer, cmd_buffer_ptr);
 			cmd_buffer_ptr = 0;
 		} else
 			cmd_buffer_ptr += 1;
@@ -269,7 +270,7 @@ pnp_process_data(int ptr, int len)
 }
 
 static void
-pnp_dmarecv_init(void)
+gcode_dmarecv_init(void)
 {
 	struct stm32f4_dma_conf conf;
 
@@ -288,7 +289,7 @@ pnp_dmarecv_init(void)
 }
 
 int
-pnp_mainloop(void)
+gcode_mainloop(void)
 {
 	uint32_t cnt;
 	int ptr;
@@ -296,7 +297,7 @@ pnp_mainloop(void)
 	ptr = 0;
 	cmd_buffer_ptr = 0;
 
-	pnp_dmarecv_init();
+	gcode_dmarecv_init();
 
 	/* Periodically poll for a new data. */
 	while (1) {
@@ -304,12 +305,12 @@ pnp_mainloop(void)
 		cnt = MAX_DMA_BUF_SIZE - cnt;
 
 		if (cnt > ptr) {
-			pnp_process_data(ptr, (cnt - ptr));
+			gcode_process_data(ptr, (cnt - ptr));
 			ptr = cnt;
 		} else if (cnt < ptr) {
 			/* Buffer wrapped. */
-			pnp_process_data(ptr, MAX_DMA_BUF_SIZE - ptr);
-			pnp_process_data(0, cnt);
+			gcode_process_data(ptr, MAX_DMA_BUF_SIZE - ptr);
+			gcode_process_data(0, cnt);
 			ptr = cnt;
 		}
 

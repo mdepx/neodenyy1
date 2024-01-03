@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2023-2024 Ruslan Bukin <br@bsdpad.com>
+ * Copyright (c) 2024 Ruslan Bukin <br@bsdpad.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,40 +24,37 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-#include <sys/systm.h>
+#ifndef _SRC_GCODE_H_
+#define	_SRC_GCODE_H_
 
-#include "board.h"
-#include "gcode.h"
-#include "pnp.h"
+struct command {
+	int type;
+#define	CMD_TYPE_MOVE		1
+#define	CMD_TYPE_ACTUATE	2
+#define	CMD_TYPE_SENSOR_READ	3
 
-int
-main(void)
-{
-	int error;
-	int i;
+	int x;
+	int y;
+	int z;
+	int h1;
+	int h2;
+	int x_set;
+	int y_set;
+	int z_set;
+	int h1_set;
+	int h2_set;
 
-	printf("MDEPX started\n");
+	int actuate_target;
+#define	PNP_ACTUATE_TARGET_PUMP		1
+#define	PNP_ACTUATE_TARGET_AVAC1	2
+#define	PNP_ACTUATE_TARGET_AVAC2	3
+#define	PNP_ACTUATE_TARGET_NEEDLE	4
+#define	PNP_ACTUATE_TARGET_PEEL		5
+	int actuate_value;
 
-	mdx_usleep(100);
+	int sensor_read_target;
+};
 
-	/*
-	 * Safety delay. Do not remove.
-	 */
+int gcode_mainloop(void);
 
-	printf("Sleeping 2 sec\n");
-	for (i = 0; i < 2; i++) {
-		udelay(500000);
-		udelay(500000);
-		printf(".");
-	}
-	printf("Sleeping 2 sec done\n");
-
-	error = pnp_test();
-	printf("pnp_test returned %d\n", error);
-
-	while (1)
-		mdx_usleep(100000);
-
-	return (0);
-}
+#endif /* !_SRC_GCODE_H_ */

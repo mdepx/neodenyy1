@@ -39,6 +39,7 @@
 
 #include "board.h"
 #include "gpio.h"
+#include "gcode.h"
 #include "pnp.h"
 
 static struct stm32f4_usart_softc usart_sc;
