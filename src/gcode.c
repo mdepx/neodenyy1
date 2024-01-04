@@ -46,10 +46,10 @@
 #define	dprintf(fmt, ...)
 #endif
 
-#define	MAX_DMA_BUF_SIZE	4096
-#define	MAX_GCODE_LEN		256
+#define	DMA_BUF_SIZE	4096
+#define	MAX_GCODE_LEN	256
 
-static uint8_t dma_buffer[MAX_DMA_BUF_SIZE];
+static uint8_t dma_buffer[DMA_BUF_SIZE];
 static uint8_t cmd_buffer[MAX_GCODE_LEN];
 static int cmd_buffer_ptr;
 
@@ -284,7 +284,7 @@ gcode_dmarecv_init(void)
 	conf.channel = 4;
 	conf.circ = 1;
 	conf.psize = 8;
-	conf.nbytes = MAX_DMA_BUF_SIZE;
+	conf.nbytes = DMA_BUF_SIZE;
 
 	stm32f4_dma_setup(&dma2_sc, &conf);
 	stm32f4_dma_control(&dma2_sc, 2, 1);
@@ -304,14 +304,14 @@ gcode_mainloop(void)
 	/* Periodically poll for a new data. */
 	while (1) {
 		cnt = stm32f4_dma_getcnt(&dma2_sc, 2);
-		cnt = MAX_DMA_BUF_SIZE - cnt;
+		cnt = DMA_BUF_SIZE - cnt;
 
 		if (cnt > ptr) {
 			gcode_process_data(ptr, (cnt - ptr));
 			ptr = cnt;
 		} else if (cnt < ptr) {
 			/* Buffer wrapped. */
-			gcode_process_data(ptr, MAX_DMA_BUF_SIZE - ptr);
+			gcode_process_data(ptr, DMA_BUF_SIZE - ptr);
 			gcode_process_data(0, cnt);
 			ptr = cnt;
 		}
