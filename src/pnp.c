@@ -331,7 +331,7 @@ calc_speed(int i, int steps, int speed)
 	t = i < (steps - i) ? i : (steps - i);
 	if (t < 1000) {
 		/* Gradually increase/decrease speed */
-		speed = (t * 100) / 1000;
+		speed = t / 10;
 		if (speed < 15)
 			speed = 15;
 	}
@@ -742,6 +742,7 @@ pnp_initialize(void)
 	pnp_xenable(1);
 	pnp_yenable(1);
 	pnp_zenable(1);
+	pnp_henable(1);
 
 	return (0);
 }
@@ -753,14 +754,13 @@ pnp_deinitialize(void)
 	pnp_xenable(0);
 	pnp_yenable(0);
 	pnp_zenable(0);
+	pnp_henable(0);
 }
 
 static void
 pnp_test_heads(void)
 {
 	int i;
-
-	pnp_henable(1);
 
 	printf("starting moving head\n");
 	for (i = 0; i < 1; i++) {
@@ -777,8 +777,6 @@ pnp_test_heads(void)
 		mdx_usleep(500000);
 	}
 	printf("head moving done\n");
-
-	pnp_henable(0);
 }
 
 static int
