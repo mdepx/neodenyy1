@@ -78,15 +78,15 @@ gcode_command_actuate(struct gcode_command *cmd)
 	switch (cmd->actuate_target) {
 	case PNP_ACTUATE_TARGET_PUMP:
 		pin_set(&gpio_sc, PORT_B, 13, val);
-		mdx_usleep(100000);
+		mdx_usleep(250000);
 		break;
 	case PNP_ACTUATE_TARGET_AVAC1:
 		pin_set(&gpio_sc, PORT_E, 2, val);
-		mdx_usleep(100000);
+		mdx_usleep(250000);
 		break;
 	case PNP_ACTUATE_TARGET_AVAC2:
 		pin_set(&gpio_sc, PORT_E, 1, val);
-		mdx_usleep(100000);
+		mdx_usleep(250000);
 		break;
 	case PNP_ACTUATE_TARGET_NEEDLE:
 		cur = pin_get(&gpio_sc, PORT_B, 5);
@@ -111,7 +111,8 @@ gcode_command_actuate(struct gcode_command *cmd)
 
 		break;
 	case PNP_ACTUATE_TARGET_PEEL:
-		pin_set(&gpio_sc, PORT_B, 12, val);
+		pin_set(&gpio_sc, PORT_B, 12, val); /* Peel L */
+		pin_set(&gpio_sc, PORT_B, 11, val); /* Peel R */
 		if (val)
 			mdx_usleep(250000);
 		break;
