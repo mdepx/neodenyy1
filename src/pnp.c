@@ -49,7 +49,7 @@
 #define	dprintf(fmt, ...)
 #endif
 
-#define	PNP_MAX_X_NM		(340000000)	/* nanometers */
+#define	PNP_MAX_X_NM		(364000000)	/* nanometers */
 #define	PNP_MAX_Y_NM		(368000000)	/* nanometers */
 #define	CAM_RADIUS		(15000000)
 
@@ -72,8 +72,8 @@
 #define	PNP_STEPS_X_MAX		(PNP_MAX_X_NM / PNP_XY_STEP_NM)
 #define	PNP_STEPS_Y_MIN		0
 #define	PNP_STEPS_Y_MAX		(PNP_MAX_Y_NM / PNP_XY_STEP_NM)
-#define	PNP_STEPS_Z_MIN		(-109000000 / PNP_Z_STEP_DEG)
-#define	PNP_STEPS_Z_MAX		(109000000 / PNP_Z_STEP_DEG)
+#define	PNP_STEPS_Z_MIN		(-111000000 / PNP_Z_STEP_DEG)
+#define	PNP_STEPS_Z_MAX		(111000000 / PNP_Z_STEP_DEG)
 #define	PNP_STEPS_H_MIN		(-180000000 / PNP_NR_STEP_DEG)
 #define	PNP_STEPS_H_MAX		(180000000 / PNP_NR_STEP_DEG)
 
@@ -267,6 +267,17 @@ pnp_yset_direction(int dir)
 }
 
 static void
+pnp_yset_direction_rev(int dir)
+{
+	int rdir;
+
+	rdir = dir ? 0 : 1;
+
+	pin_set(&gpio_sc, PORT_C, 13, !rdir); /* Y R FR */
+	pin_set(&gpio_sc, PORT_C, 9, !dir); /* Y L FR */
+}
+
+static void
 pnp_zset_direction(int dir)
 {
 
@@ -298,7 +309,7 @@ zstep(int chanset, int speed)
 {
 	uint32_t freq;
 
-	freq = speed * 150000;
+	freq = speed * 50000;
 
 	stm32f4_pwm_step(&pwm_z_sc, chanset, freq);
 }
@@ -454,36 +465,49 @@ pnp_move_home_motor(struct motor_state *motor)
 
 	task = &motor->task;
 
-	/* Ensure we are not at home. */
-	if (motor->is_at_home()) {
-		/* Already at home, move back a bit. */
-		task->direction = 1;
-		task->steps = 10000000 / motor->step_nm;
+	/* First reach home quickly. */
+	if (motor->is_at_home() == 0) {
+		task->steps = PNP_MAX_Y_NM / motor->step_nm;
+		task->check_home = 1;
 		task->speed = 20;
-		task->speed_control = 1;
-		task->check_home = 0;
+		task->speed_control = 0;
+		task->direction = 0;
 		mdx_sem_post(&motor->worker_sem);
 		mdx_sem_wait(&task->task_compl_sem);
-		if (motor->is_at_home())
-			panic("still at home");
 	}
 
+	if (motor->is_at_home() == 0)
+		panic("we are still not at home");
+
+	/* Now move back a bit. */
+	task->direction = 1;
+	task->steps = 10000000 / motor->step_nm;
+	task->speed = 10;
+	task->speed_control = 0;
+	task->check_home = 0;
+	mdx_sem_post(&motor->worker_sem);
+	mdx_sem_wait(&task->task_compl_sem);
+
+	if (motor->is_at_home())
+		panic("still at home");
+
+	/* Now try to reach home slowly. */
+
 	printf("%s is trying to reach home\n", motor->name);
-	/* Try to reach home. */
 	task->steps = PNP_MAX_Y_NM / motor->step_nm;
 	task->check_home = 1;
-	task->speed = 20;
+	task->speed = 2;
 	task->speed_control = 0;
 	task->direction = 0;
 	mdx_sem_post(&motor->worker_sem);
 	mdx_sem_wait(&task->task_compl_sem);
 
-	printf("%s is going into home for 1mm\n", motor->name);
-
 	/* Now go into home for 1 mm. */
+
+	printf("%s is going into home for 1mm\n", motor->name);
 	task->steps = 1000000 / motor->step_nm;
 	task->check_home = 0;
-	task->speed = 5;
+	task->speed = 2;
 	task->speed_control = 0;
 	task->direction = 0;
 	mdx_sem_post(&motor->worker_sem);
@@ -596,13 +620,13 @@ pnp_command_move(struct gcode_command *cmd)
 	}
 
 	if (cmd->h1_set) {
-		h1 = cmd->h1;
+		h1 = -1 * cmd->h1;
 		printf("moving H1 to %d\n", h1);
 		pnp_move_nonblock(&pnp.motor_h1, h1);
 	}
 
 	if (cmd->h2_set) {
-		h2 = cmd->h2;
+		h2 = -1 * cmd->h2;
 		printf("moving H2 to %d\n", h2);
 		/* TODO: check for errors. */
 		pnp_move_nonblock(&pnp.motor_h2, h2);
@@ -845,9 +869,16 @@ pnp_test(void)
 	pnp_test_heads();
 	if (1 == 0)
 		pnp_test_z();
+
 	error = pnp_move_home();
 	if (error)
 		return (error);
+
+	/* Change location of 0,0. */
+	pnp_move_xy(0, PNP_MAX_Y_NM);
+	pnp.motor_y.steps = 0;
+	pnp.motor_y.set_direction = pnp_yset_direction_rev;
+
 	pnp_move_random();
 	gcode_mainloop();
 	pnp_deinitialize();
