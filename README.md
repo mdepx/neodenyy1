@@ -29,9 +29,9 @@ We will use this UART for both communication to OpenPnP over GCode (input/output
 
 ### What this project gives to you
 
- 1) New firmware
+ 1) New firmware written from scratch for the main board. The firmware uses real-time operating system [MDEPX](https://github.com/mdepx/mdepx) that I wrote from scratch as well.
  2) CAD models so you can assemble your own USB camera modules and LED rings (TODO)
- 3) No warranty of any kind. It is your own risk.
+ 3) No warranty of any kind. Do that on your own risk!
 
 ### Debug tools
 
