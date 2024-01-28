@@ -2,7 +2,22 @@
 
 This is a conversion kit for your YY1 to make it OpenPnP-compatible.
 
-Hardware overview
+Project status: working, managed to assemble a few boards with no issues.
+
+Note the information below is not complete, I am keep updating it.
+
+### Hardware overview.
+
+YY1 features several electronics parts: main (or stepper) board, 3x displays and camera boards. All parts are connected to each other using either UART or SPI, there is no USB in entire system.
+
+Main board is build around STM32F407VET6 micro-controller and LV8729 steppers.
+
+The vision is done on the edge, i.e. directly on the PCBs the camera sensors are located on. Each features STM32H7. The camera sensor handled by DCMI (Digital Camera Interface) stm32's peripheral device. Firmware on both cameras are identical. The result of machine vision is then passed over low speed serial interface to the main board.
+
+Each of camera module is connected to its display for HMI over low speed as well.
+
+Main display is connected to main board over UART.
+We will use this UART for both communication to OpenPnP over GCode (input/output) and developer console to the stm32f407 (output only).
 
 ![Stepper board](https://raw.githubusercontent.com/mdepx/neodenyy1/master/images/stepper_board.jpg)
 
@@ -23,6 +38,7 @@ I use [OpenOCD fork from RPI](https://github.com/raspberrypi/openocd.git).
     $ make
 
 ### Read and backup your current firmware
+    $ #replace tcl path to your openocd installation directory
     $ sudo openocd -f interface/cmsis-dap.cfg -f target/stm32f4x.cfg -s /home/br/dev/openocd-rpi/tcl -c "adapter speed 5000" -c 'cmsis_dap_vid_pid 0x2e8a 0x000c' -c init -c "reset halt" -c 'flash read_bank 0 firmware_YY1.bin 0 0x80000' -c "reset" -c shutdown
 
 ### Program firmware
