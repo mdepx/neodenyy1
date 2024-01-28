@@ -879,7 +879,9 @@ pnp_main(void)
 	pnp.motor_y.steps = 0;
 	pnp.motor_y.set_direction = pnp_yset_direction_rev;
 
-	pnp_move_random();
+	if (1 == 0)
+		pnp_move_random();
+
 	gcode_mainloop();
 	pnp_deinitialize();
 
