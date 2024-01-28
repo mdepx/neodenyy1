@@ -4,7 +4,7 @@ This is a conversion kit for your YY1 to make it OpenPnP-compatible.
 
 Project status: working, managed to assemble a few boards with no issues.
 
-Note the information below is not complete, I am keep updating it.
+Note that the information below is not complete, I am keep updating it.
 
 ### Hardware overview.
 
@@ -12,20 +12,26 @@ YY1 features several electronics parts: main (or stepper) board, 3x displays and
 
 Main board is build around STM32F407VET6 micro-controller and LV8729 steppers.
 
-The vision is done on the edge, i.e. directly on the PCBs the camera sensors are located on. Each features STM32H7. The camera sensor handled by DCMI (Digital Camera Interface) stm32's peripheral device. Firmware on both cameras are identical. The result of machine vision is then passed over low speed serial interface to the main board.
+The vision is done on the edge, i.e. directly on the PCBs the camera sensors are located on. Each features STM32H7. The camera sensor handled by DCMI (Digital Camera Interface) stm32's peripheral device. Firmware on both cameras are identical. The result of machine vision is then passed over low speed serial interface to the main board. The stm32 pins exposed to connectors on the camera modules could not be remapped to USB.
 
 Each of camera module is connected to its display for HMI over low speed as well.
 
-Main display is connected to main board over UART.
+Main display is connected to the main board over UART.
 We will use this UART for both communication to OpenPnP over GCode (input/output) and developer console to the stm32f407 (output only).
 
 ![Stepper board](https://raw.githubusercontent.com/mdepx/neodenyy1/master/images/stepper_board.jpg)
+
+### What you need to do
+
+ 1) Replace both cameras (for OpenPnP we need USB cameras)
+ 2) Update firmware
+ 3) Setup OpenPnP
 
 ### Debug tools
 
 Locate SWD pins (Data / Clock / Ground) on the stepper board and solder down 2.54mm header.
 
-Any standard Cortex SWD debugger should work with those pins. Instructions located below are for [Debug Probe](https://www.raspberrypi.com/products/debug-probe/).
+Any standard Cortex SWD debugger should work with those pins. Instructions below are for [Debug Probe](https://www.raspberrypi.com/products/debug-probe/).
 
 ### Download and install OpenOCD
 
