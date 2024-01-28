@@ -71,6 +71,6 @@ Any improvements are welcome! Note that your patches and pull-requests (if any) 
 ### Help
 
 If you are seeking for help for this project or need firmware for another PnP / other types of equipment, then you can reach me using br@bsdpad.com.
-Also my telegram channel @machinedependent and the telegram chat linked to it are available.
+Also my telegram channel [@machinedependent](https://t.me/machinedependent) and the chat linked to it are available.
 
 ![NeoDen YY1](https://raw.githubusercontent.com/mdepx/neodenyy1/master/images/neodenyy1.jpg)
