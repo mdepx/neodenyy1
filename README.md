@@ -59,9 +59,15 @@ I use [OpenOCD fork from RPI](https://github.com/raspberrypi/openocd.git).
 ### Operation
 
 Note that by default the firmware will home the machine on startup. Homing button in the OpenPnP is not implemented (yet).
+Note that this firmware converts rotational motion of Z coordinate into linear. When you setup Z axis in the OpenPnP use ReferenceControllerAxis.
 
 ### Contribution
 
 Any improvements are welcome! Note that your patches and pull-requests (if any) use FreeBSD's [style(9) guide](https://man.freebsd.org/cgi/man.cgi?style(9)) and BSD 2-clause license.
+
+### Help
+
+If you are seeking for help for this project or need firmware for another PnP / other types of equipment, then you can reach me using br@bsdpad.com.
+Also my telegram channel @machinedependent and the telegram chat linked to it are available.
 
 ![NeoDen YY1](https://raw.githubusercontent.com/mdepx/neodenyy1/master/images/neodenyy1.jpg)
