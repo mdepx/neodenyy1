@@ -1,4 +1,4 @@
-# Firmware for Neoden YY1 Pick And Place machine
+# Firmware for Neoden YY1 Pick-And-Place machine
 
 This is a conversion kit for your YY1 to make it OpenPnP-compatible.
 
