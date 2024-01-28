@@ -31,6 +31,7 @@ We will use this UART for both communication to OpenPnP over GCode (input/output
 
  1) New firmware
  2) CAD models so you can assemble your own USB camera modules and LED rings (TODO)
+ 3) No warranty of any kind. It is your own risk.
 
 ### Debug tools
 
