@@ -42,12 +42,15 @@ Any standard Cortex SWD debugger should work with those pins. Instructions below
 ### Download and install OpenOCD
 
 I use [OpenOCD fork from RPI](https://github.com/raspberrypi/openocd.git).
+(Clone and build using instructions provided at the link)
 
-### Build under Linux/FreeBSD
+### Build this firmware under Linux/FreeBSD
     $ export CROSS_COMPILE=arm-none-eabi-
     $ git clone --recursive https://github.com/mdepx/neodenyy1
     $ cd neodenyy1
     $ make
+
+Note there is no support for build under Windows.
 
 ### Read and backup your current firmware
     $ #replace tcl path to your openocd installation directory
