@@ -1,5 +1,17 @@
 # Firmware for Neoden YY1 Pick And Place machine
 
+This is a conversion kit for your YY1 to make it OpenPnP-compatible.
+
+Hardware overview
+
+  TODO
+
+### Debug tools
+
+Any standard Cortex SWD debugger should work. Instructions below are for [Debug Probe](https://www.raspberrypi.com/products/debug-probe/).
+
+### Download and install [OpenOCD from RPI](https://github.com/raspberrypi/openocd.git)
+
 ### Build under Linux/FreeBSD
     $ export CROSS_COMPILE=arm-none-eabi-
     $ git clone --recursive https://github.com/mdepx/neodenyy1
