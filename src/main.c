@@ -53,8 +53,9 @@ main(void)
 	}
 	printf("Sleeping 2 sec done\n");
 
-	error = pnp_test();
-	printf("pnp_test returned %d\n", error);
+	error = pnp_main();
+
+	printf("pnp_main returned %d\n", error);
 
 	while (1)
 		mdx_usleep(100000);

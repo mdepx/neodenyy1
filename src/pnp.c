@@ -861,7 +861,7 @@ pnp_test_z(void)
 }
 
 int
-pnp_test(void)
+pnp_main(void)
 {
 	int error;
 
