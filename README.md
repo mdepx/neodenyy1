@@ -27,6 +27,11 @@ We will use this UART for both communication to OpenPnP over GCode (input/output
  2) Update firmware
  3) Setup OpenPnP
 
+### What this project gives to you
+
+ 1) New firmware
+ 2) CAD models so you can assemble your own USB camera modules and LED rings (TODO)
+
 ### Debug tools
 
 Locate SWD pins (Data / Clock / Ground) on the stepper board and solder down 2.54mm header.
