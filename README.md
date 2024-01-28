@@ -57,9 +57,11 @@ I use [OpenOCD fork from RPI](https://github.com/raspberrypi/openocd.git).
     $ sudo openocd -f interface/cmsis-dap.cfg -f target/stm32f4x.cfg -s /home/br/dev/openocd-rpi/tcl -c "adapter speed 5000;" -c 'cmsis_dap_vid_pid 0x2e8a 0x000c' -c init -c "reset halt" -c 'program obj/neodenyy1.bin reset 0x08000000 exit'
 
 ### Operation
+
     Note that by default the firmware will home the machine on startup. Homing button in the OpenPnP is not implemented (yet).
 
 ### Contribution
+
     Any improvements are welcome! Note that your patches and pull-requests (if any) use FreeBSD's [style(9) guide](https://man.freebsd.org/cgi/man.cgi?style(9)) and BSD 2-clause license.
 
 ![NeoDen YY1](https://raw.githubusercontent.com/mdepx/neodenyy1/master/images/neodenyy1.jpg)
