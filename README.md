@@ -80,6 +80,16 @@ Replace tcl path to your openocd installation directory
 Note that by default the firmware will home the machine on startup. Homing button in the OpenPnP is not implemented (yet).
 Note that this firmware converts linear motion of Z coordinate into rotational. When you setup Z axis in the OpenPnP use ReferenceControllerAxis (linear motion).
 
+### Camera modules
+
+You need these parts
+
+    - M2 standoff round spacers https://www.aliexpress.com/item/4001270070683.html
+    - M3 standoff hex spacers https://www.aliexpress.com/item/4001242054845.html
+    - Wera 118124 Kraftform Micro Nut Spinner 5mm (for M3 standoffs)
+    - Sony IMX415 Top and Bottom cameras https://www.aliexpress.com/item/1005005481109987.html
+    - Some M12 lens on your choice (I'm still experimenting with different)
+
 ### Contribution
 
 Any improvements are welcome! Note that your patches and pull-requests (if any) use FreeBSD's [style(9) guide](https://man.freebsd.org/cgi/man.cgi?style(9)) and BSD 2-clause license.
