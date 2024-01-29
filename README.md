@@ -71,7 +71,7 @@ Replace tcl path to your openocd installation directory
 ### Operation
 
 Note that by default the firmware will home the machine on startup. Homing button in the OpenPnP is not implemented (yet).
-Note that this firmware converts rotational motion of Z coordinate into linear. When you setup Z axis in the OpenPnP use ReferenceControllerAxis.
+Note that this firmware converts linear motion of Z coordinate into rotational. When you setup Z axis in the OpenPnP use ReferenceControllerAxis (linear motion).
 
 ### Contribution
 
