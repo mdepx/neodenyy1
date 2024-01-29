@@ -94,6 +94,10 @@ You need these parts
 
 Any improvements are welcome! Note that your patches and pull-requests (if any) use FreeBSD's [style(9) guide](https://man.freebsd.org/cgi/man.cgi?style(9)) and BSD 2-clause license.
 
+### LQFP128 vision result
+
+![LQFP](https://raw.githubusercontent.com/mdepx/neodenyy1/master/images/lqfp_vision.gif)
+
 ### Help
 
 If you are seeking for help for this project or need firmware for another PnP / other types of equipment, then you can reach me using br@bsdpad.com.
