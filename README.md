@@ -4,11 +4,18 @@ This is a conversion kit for your YY1 to make it OpenPnP-compatible.
 
 Project status: working, managed to assemble a few boards with no issues.
 
+| part              | status  |  notes |
+| ----------------- | ------- | ------ |
+| Motion controller | functional              | gcode parts needed for speed control and homing     |
+| Vision            | functional              | openpnp's vision pipeline needs tuning |
+| LED ring bottom   | prototyping in progress | |
+| LED ring top      | prototyping in progress | |
+
 Note that the information below is not complete, I am keep updating it.
 
 ### Hardware overview.
 
-YY1 features several electronics parts: main (or stepper) board, 3x displays and camera boards. All parts are connected to each other using either UART or SPI, there is no USB in entire system.
+YY1 features several electronics parts: main board (motion controller), 3x displays and camera boards. All parts are connected to each other using either UART or SPI, there is no USB in entire system.
 
 Main board is build around STM32F407VET6 micro-controller and LV8729 steppers.
 
@@ -29,7 +36,7 @@ We will use this UART for both communication to OpenPnP over GCode (input/output
 
 ### What this project gives to you
 
- 1) New firmware written from scratch for the main board. The firmware uses real-time operating system [MDEPX](https://github.com/mdepx/mdepx) that I wrote from scratch as well.
+ 1) New firmware for motion controller written from scratch. The firmware uses real-time operating system [MDEPX](https://github.com/mdepx/mdepx) that I wrote from scratch as well.
  2) CAD models so you can assemble your own USB camera modules and LED rings (TODO)
  3) No warranty of any kind. Do that on your own risk!
 
