@@ -1,8 +1,3 @@
-### Cad files for camera modules
-
-
-Submit zip files to JLCPCB.
-
 ### Bottom camera
 
 Submit md024.zip to JLCPCB.
